@@ -1,0 +1,27 @@
+# Netlify Configuration
+# For deploying Incrypt Arena as a static React app
+
+[build]
+  # Build commands run from the root
+  command = "npm run build"
+  # Output directory for the built files
+  publish = "dist"
+
+# SPA Redirect - All routes to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Security Headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Environment Variables (set in Netlify Dashboard)
+# VITE_SUPABASE_URL = your-project-url
+# VITE_SUPABASE_ANON_KEY = your-anon-key
