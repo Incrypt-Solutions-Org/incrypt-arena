@@ -3,7 +3,7 @@
  * Main navigation header with Incrypt logo and nav links
  */
 import { Link, useLocation } from 'react-router-dom';
-import { Trophy, BookOpen, Shield, Gift } from 'lucide-react';
+import { Trophy, BookOpen, Shield, Gift, Calendar } from 'lucide-react';
 
 /**
  * Navigation link configuration
@@ -11,6 +11,7 @@ import { Trophy, BookOpen, Shield, Gift } from 'lucide-react';
  */
 const NAV_LINKS = [
   { path: '/', label: 'Leaderboard', icon: Trophy },
+  { path: '/checkin', label: 'Check-In', icon: Calendar },
   { path: '/rules', label: 'Rules', icon: BookOpen },
   { path: '/rewards', label: 'Rewards', icon: Gift },
   { path: '/admin', label: 'Admin', icon: Shield },

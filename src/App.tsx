@@ -7,6 +7,7 @@ import { Header } from './components/Header';
 import { LeaderboardPage } from './pages/Leaderboard';
 import { RulesPage } from './pages/Rules';
 import { RewardsPage } from './pages/Rewards';
+import { CheckInPage } from './pages/CheckIn';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
 
@@ -25,6 +26,7 @@ export default function App() {
             <Route path="/" element={<LeaderboardPage />} />
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/rewards" element={<RewardsPage />} />
+            <Route path="/checkin" element={<CheckInPage />} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLogin />} />

@@ -16,6 +16,8 @@ import { AttendanceForm } from '../components/admin/AttendanceForm';
 import { PointsForm } from '../components/admin/PointsForm';
 import { ActivityForm } from '../components/admin/ActivityForm';
 import { BookForm } from '../components/admin/BookForm';
+import { CourseForm } from '../components/admin/CourseForm';
+import { PresentationForm } from '../components/admin/PresentationForm';
 import { IdeasForm } from '../components/IdeasForm';
 import { StreaksPanel } from '../components/admin/StreaksPanel';
 
@@ -126,12 +128,7 @@ export function AdminDashboard() {
           <ActivityForm players={entries} />
         )}
         {activeTab === 'courses' && (
-          <PointsForm 
-            title="Course Points"
-            description="Award points for completed courses. Formula: (Hours × Completion%) × 4"
-            players={entries}
-            category="course"
-          />
+          <CourseForm players={entries} />
         )}
         {activeTab === 'books' && (
           <BookForm players={entries} />
@@ -145,12 +142,7 @@ export function AdminDashboard() {
           />
         )}
         {activeTab === 'presentations' && (
-          <PointsForm 
-            title="Presentation Points"
-            description="1st solo: 30 pts, 1st pair: 20 pts. Best presentation: +20 pts"
-            players={entries}
-            category="presentation"
-          />
+          <PresentationForm players={entries} />
         )}
         {activeTab === 'penalties' && (
           <PointsForm 

@@ -90,16 +90,16 @@ CREATE TABLE courses (
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
   cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
-  url TEXT,
-  hours DECIMAL(5,2) NOT NULL,
-  completion_percentage INTEGER NOT NULL CHECK (completion_percentage >= 0 AND completion_percentage <= 100),
+  course_url TEXT,
+  total_hours DECIMAL(5,2) NOT NULL,
+  completion_percent INTEGER NOT NULL CHECK (completion_percent >= 0 AND completion_percent <= 100),
   points INTEGER GENERATED ALWAYS AS (
     CASE 
-      WHEN completion_percentage >= 60 THEN FLOOR((hours * completion_percentage / 100) * 4)
+      WHEN completion_percent >= 60 THEN FLOOR((total_hours * completion_percent / 100) * 4)
       ELSE 0 
     END
   ) STORED,
-  notes TEXT,
+  notes_link TEXT,
   verified BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -131,6 +131,7 @@ CREATE TABLE books (
   category VARCHAR(50) CHECK (category IN ('software', 'management', 'business', 'soft_skills')),
   total_pages INTEGER NOT NULL,
   pages_read INTEGER DEFAULT 0,
+  notes_link TEXT,
   summary_notes TEXT,
   points INTEGER GENERATED ALWAYS AS (FLOOR(pages_read / 10)) STORED,
   verified BOOLEAN DEFAULT false,
@@ -143,14 +144,16 @@ CREATE TABLE books (
 CREATE TABLE presentations (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+  second_presenter_id UUID REFERENCES players(id) ON DELETE SET NULL,
   cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
   topic VARCHAR(255) NOT NULL,
+  date DATE NOT NULL,
   slides_url TEXT,
-  recording_url TEXT,
+  youtube_url TEXT,
+  eval_link TEXT,
   is_solo BOOLEAN DEFAULT true,
   presentation_order INTEGER DEFAULT 1,
   points INTEGER DEFAULT 30,
-  date DATE NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

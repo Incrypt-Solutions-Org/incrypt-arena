@@ -178,19 +178,9 @@ export function RewardsPage() {
             <h3 className="font-display text-2xl font-bold text-danger mb-2">
               El Kooz Award
             </h3>
-            <p className="text-gray-400 mb-4">
-              The last place player gets the infamous "El Kooz" (bucket) badge and must wear it with... honor?
+            <p className="text-gray-400">
+              Nobody wants to finish last! The "El Kooz" badge comes with some friendly team traditions.
             </p>
-            <div className="flex flex-wrap gap-2">
-              {['El Kooz badge on profile', 'Coffee duty for a week', 'Must bring breakfast for the team'].map((item, i) => (
-                <span
-                  key={i}
-                  className="px-3 py-1 bg-danger/20 text-danger text-sm rounded-full"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
           </div>
         </div>
       </motion.div>

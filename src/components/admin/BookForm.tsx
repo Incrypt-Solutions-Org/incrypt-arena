@@ -27,6 +27,7 @@ export function BookForm({ players }: BookFormProps) {
   const [category, setCategory] = useState('');
   const [totalPages, setTotalPages] = useState('');
   const [pagesRead, setPagesRead] = useState('');
+  const [notesLink, setNotesLink] = useState('');
   const [summaryNotes, setSummaryNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function BookForm({ players }: BookFormProps) {
             category,
             total_pages: parseInt(totalPages),
             pages_read: parseInt(pagesRead),
+            notes_link: notesLink || null,
             summary_notes: summaryNotes || null,
             verified: true, // Admin-submitted, auto-verified
           });
@@ -78,6 +80,7 @@ export function BookForm({ players }: BookFormProps) {
       setCategory('');
       setTotalPages('');
       setPagesRead('');
+      setNotesLink('');
       setSummaryNotes('');
     } catch (err) {
       console.error('Failed to log book:', err);
@@ -259,6 +262,21 @@ export function BookForm({ players }: BookFormProps) {
               </span>
             </div>
           )}
+
+          {/* Notes Link */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Notes Link (URL)
+            </label>
+            <input
+              type="url"
+              value={notesLink}
+              onChange={(e) => setNotesLink(e.target.value)}
+              placeholder="https://...your study notes"
+              className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                       text-white focus:border-neon-blue focus:outline-none"
+            />
+          </div>
 
           {/* Summary Notes */}
           <div>
