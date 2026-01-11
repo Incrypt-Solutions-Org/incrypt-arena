@@ -173,6 +173,7 @@ export interface LeaderboardEntry {
   book_points: number;
   presentation_points: number;
   idea_points: number;
+  top_performer_points: number;
   penalty_points: number;
   is_last_place: boolean;
 }

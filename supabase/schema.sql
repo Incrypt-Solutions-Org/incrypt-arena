@@ -14,12 +14,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- Separate from Supabase Auth users (admins)
 -- ============================================
 DROP TABLE IF EXISTS penalties CASCADE;
+DROP TABLE IF EXISTS top_performer_awards CASCADE;
 DROP TABLE IF EXISTS ideas CASCADE;
 DROP TABLE IF EXISTS activity_participations CASCADE;
 DROP TABLE IF EXISTS activities CASCADE;
 DROP TABLE IF EXISTS peer_evaluations CASCADE;
 DROP TABLE IF EXISTS presentations CASCADE;
 DROP TABLE IF EXISTS blogs CASCADE;
+DROP TABLE IF EXISTS books_library CASCADE;
 DROP TABLE IF EXISTS books CASCADE;
 DROP TABLE IF EXISTS courses CASCADE;
 DROP TABLE IF EXISTS attendance CASCADE;
@@ -31,6 +33,7 @@ CREATE TABLE players (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  far_away BOOLEAN DEFAULT false,
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -111,8 +114,8 @@ CREATE TABLE blogs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   player_id UUID REFERENCES players(id) ON DELETE CASCADE,
   cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
-  title VARCHAR(255) NOT NULL,
-  url TEXT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  url TEXT NOT NULL UNIQUE,
   is_first BOOLEAN DEFAULT false,
   points INTEGER DEFAULT 20,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -137,6 +140,49 @@ CREATE TABLE books (
   verified BOOLEAN DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- ============================================
+-- BOOKS LIBRARY TABLE
+-- Master catalog of available books
+-- ============================================
+CREATE TABLE books_library (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  author VARCHAR(255),
+  category VARCHAR(100),
+  points_per_10_pages INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- IDEAS TABLE
+-- Employee ideas and innovations
+-- ============================================
+CREATE TABLE ideas (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+  cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  points INTEGER NOT NULL,
+  date DATE DEFAULT CURRENT_DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ============================================
+-- TOP PERFORMER AWARDS TABLE
+-- Custom points awarded by admin
+-- ============================================
+CREATE TABLE top_performer_awards (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
+  cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
+  points INTEGER NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 
 -- ============================================
 -- PRESENTATIONS TABLE
@@ -240,9 +286,9 @@ WITH player_points AS (
     p.name as player_name,
     p.avatar_url,
     
-    -- Attendance points (including early bird bonus)
+    -- Attendance points (including early bird bonus and far_away multiplier)
     COALESCE((
-      SELECT SUM(points + CASE WHEN is_early_bird THEN 1 ELSE 0 END)
+      SELECT SUM((points + CASE WHEN is_early_bird THEN 1 ELSE 0 END) * CASE WHEN p.far_away THEN 2 ELSE 1 END)
       FROM attendance a 
       WHERE a.player_id = p.id
     ), 0) as attendance_points,
@@ -289,6 +335,13 @@ WITH player_points AS (
       WHERE bk.player_id = p.id AND bk.verified = true
     ), 0) as book_points,
     
+    -- Top performer awards
+    COALESCE((
+      SELECT SUM(points)
+      FROM top_performer_awards tpa 
+      WHERE tpa.player_id = p.id
+    ), 0) as top_performer_points,
+    
     -- Penalty points (negative)
     COALESCE((
       SELECT SUM(points)
@@ -309,12 +362,13 @@ SELECT
   book_points,
   presentation_points,
   idea_points,
+  top_performer_points,
   penalty_points,
   (attendance_points + activity_points + course_points + blog_points + book_points +
-   presentation_points + idea_points + penalty_points) as total_points,
+   presentation_points + idea_points + top_performer_points + penalty_points) as total_points,
   RANK() OVER (ORDER BY 
     (attendance_points + activity_points + course_points + blog_points + book_points +
-     presentation_points + idea_points + penalty_points) DESC
+     presentation_points + idea_points + top_performer_points + penalty_points) DESC
   ) as rank
 FROM player_points
 ORDER BY total_points DESC;
@@ -334,6 +388,9 @@ ALTER TABLE peer_evaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE activity_participations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE books ENABLE ROW LEVEL SECURITY;
+ALTER TABLE books_library ENABLE ROW LEVEL SECURITY;
+ALTER TABLE top_performer_awards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE penalties ENABLE ROW LEVEL SECURITY;
 
 -- Public read access (anyone can view the leaderboard)

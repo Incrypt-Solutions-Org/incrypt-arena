@@ -2,14 +2,18 @@
  * Main App Component
  * Sets up routing and global layout
  */
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
+import { ProtectedRoute } from './components/ProtectedRoute';
 import { LeaderboardPage } from './pages/Leaderboard';
-import { RulesPage } from './pages/Rules';
+import { RulesPage} from './pages/Rules';
 import { RewardsPage } from './pages/Rewards';
 import { CheckInPage } from './pages/CheckIn';
-import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/AdminDashboard';
+import MyAchievements from './pages/MyAchievements';
+import TeamAchievements from './pages/TeamAchievements';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
 
 export default function App() {
   return (
@@ -22,15 +26,23 @@ export default function App() {
         {/* Main Content */}
         <main className="flex-1">
           <Routes>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            
             {/* Public Routes */}
             <Route path="/" element={<LeaderboardPage />} />
             <Route path="/rules" element={<RulesPage />} />
             <Route path="/rewards" element={<RewardsPage />} />
-            <Route path="/checkin" element={<CheckInPage />} />
             
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLogin />} />
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            {/* Protected User Routes */}
+            <Route path="/checkin" element={<ProtectedRoute><CheckInPage /></ProtectedRoute>} />
+            <Route path="/my-achievements" element={<ProtectedRoute><MyAchievements /></ProtectedRoute>} />
+            <Route path="/team-achievements" element={<ProtectedRoute><TeamAchievements /></ProtectedRoute>} />
+            
+            {/* Protected Admin Routes */}
+            <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="/admin/dashboard" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
             
             {/* 404 Fallback */}
             <Route path="*" element={<NotFound />} />

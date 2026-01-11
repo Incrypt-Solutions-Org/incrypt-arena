@@ -20,6 +20,7 @@ const createMockEntry = (overrides: Partial<LeaderboardEntry> = {}): Leaderboard
   book_points: 0,
   presentation_points: 15,
   idea_points: 5,
+  top_performer_points: 0,
   penalty_points: -5,
   is_last_place: false,
   ...overrides,

@@ -2,9 +2,11 @@
  * Rules Page Component
  * Displays scoring rules and point system information
  */
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Trophy, Calendar, GraduationCap, PenTool, Presentation, Lightbulb, AlertTriangle } from 'lucide-react';
 import { POINTS } from '../types';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 /**
  * Scoring categories with their rules
@@ -52,6 +54,15 @@ const SCORING_RULES = [
     note: 'Minimum 60% completion required',
   },
   {
+    category: 'Books',
+    icon: BookOpen,
+    color: 'text-indigo-400',
+    items: [
+      { label: 'Book Reading', points: null, description: 'Points = (Pages ÷ 10) × Points per 10 pages' },
+    ],
+    note: 'Points per page vary by book - see Books Library below',
+  },
+  {
     category: 'Activities',
     icon: Trophy,
     color: 'text-orange-400',
@@ -82,7 +93,43 @@ const SCORING_RULES = [
   },
 ];
 
+interface Book {
+  id: string;
+  name: string;
+  author: string | null;
+  category: string | null;
+  points_per_10_pages: number;
+}
+
 export function RulesPage() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [booksLoading, setBooksLoading] = useState(true);
+
+  useEffect(() => {
+    loadBooks();
+  }, []);
+
+  const loadBooks = async () => {
+    setBooksLoading(true);
+    if (isSupabaseConfigured()) {
+      try {
+        const { data } = await supabase.from('books_library').select('*').order('category', { ascending: true }).order('name', { ascending: true });
+        if (data) setBooks(data);
+      } catch (err) {
+        console.error('Failed to load books:', err);
+      }
+    }
+    setBooksLoading(false);
+  };
+
+  // Group books by category
+  const booksByCategory = books.reduce((acc, book) => {
+    const cat = book.category || 'Uncategorized';
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(book);
+    return acc;
+  }, {} as Record<string, Book[]>);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Page Header */}
@@ -163,6 +210,57 @@ export function RulesPage() {
           </motion.div>
         ))}
       </div>
+
+      {/* Books Library Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className="mt-12"
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <BookOpen className="w-6 h-6 text-indigo-400" />
+          <h2 className="font-display text-2xl font-bold text-white">Books Library</h2>
+        </div>
+        <p className="text-gray-400 mb-6">
+          Available books for reading. Points are calculated based on pages read.
+        </p>
+
+        {booksLoading ? (
+          <div className="cyber-card p-8 text-center">
+            <div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" />
+          </div>
+        ) : books.length === 0 ? (
+          <div className="cyber-card p-8 text-center text-gray-400">
+            No books available yet. Check back soon!
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {Object.entries(booksByCategory).map(([category, categoryBooks]) => (
+              <div key={category} className="cyber-card p-6">
+                <h3 className="font-display text-lg font-semibold text-indigo-400 mb-4">
+                  {category}
+                </h3>
+                <ul className="space-y-3">
+                  {categoryBooks.map((book) => (
+                    <li key={book.id} className="flex justify-between items-start gap-3 border-b border-gray-700/50 pb-3 last:border-0 last:pb-0">
+                      <div className="flex-1">
+                        <span className="text-white font-medium block">{book.name}</span>
+                        {book.author && (
+                          <span className="text-xs text-gray-500">by {book.author}</span>
+                        )}
+                      </div>
+                      <span className="text-neon-blue font-display font-bold text-sm whitespace-nowrap">
+                        +{book.points_per_10_pages}/10p
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
 
       {/* Bottom note */}
       <motion.div

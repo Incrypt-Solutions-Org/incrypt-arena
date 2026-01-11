@@ -35,7 +35,7 @@ describe('Header Component', () => {
     
     expect(screen.getByRole('link', { name: /leaderboard/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /rules/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /admin/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /login/i })).toBeInTheDocument();
   });
 
   it('has correct navigation link destinations', () => {
@@ -43,6 +43,6 @@ describe('Header Component', () => {
     
     expect(screen.getByRole('link', { name: /leaderboard/i })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: /rules/i })).toHaveAttribute('href', '/rules');
-    expect(screen.getByRole('link', { name: /admin/i })).toHaveAttribute('href', '/admin');
+    expect(screen.getByRole('link', { name: /login/i })).toHaveAttribute('href', '/login');
   });
 });

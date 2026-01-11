@@ -28,6 +28,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 30,
     blog_points: 20,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 10,
     idea_points: 5,
     penalty_points: -10,
@@ -43,6 +44,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 25,
     blog_points: 15,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 10,
     idea_points: 0,
     penalty_points: -5,
@@ -58,6 +60,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 20,
     blog_points: 10,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -73,6 +76,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 15,
     blog_points: 10,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -88,6 +92,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 15,
     blog_points: 5,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -103,6 +108,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 10,
     blog_points: 5,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -118,6 +124,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 10,
     blog_points: 0,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -133,6 +140,7 @@ const MOCK_LEADERBOARD: LeaderboardEntry[] = [
     course_points: 5,
     blog_points: 0,
     book_points: 0,
+    top_performer_points: 0,
     presentation_points: 5,
     idea_points: 0,
     penalty_points: -5,
@@ -190,23 +198,7 @@ export function useLeaderboard(): UseLeaderboardReturn {
     fetchLeaderboard();
   }, [fetchLeaderboard]);
 
-  // Subscribe to real-time updates if Supabase is configured
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
 
-    const channel = supabase
-      .channel('leaderboard-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'attendance' }, () => fetchLeaderboard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'courses' }, () => fetchLeaderboard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'blogs' }, () => fetchLeaderboard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'presentations' }, () => fetchLeaderboard())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'penalties' }, () => fetchLeaderboard())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchLeaderboard]);
 
   return {
     entries,

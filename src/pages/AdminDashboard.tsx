@@ -7,7 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Users, Calendar, BookOpen, PenTool, Presentation, 
-  Trophy, AlertTriangle, LogOut, Lightbulb, Zap
+  Trophy, AlertTriangle, LogOut, Lightbulb, Zap, Award
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLeaderboard } from '../hooks/useLeaderboard';
@@ -17,8 +17,14 @@ import { PointsForm } from '../components/admin/PointsForm';
 import { ActivityForm } from '../components/admin/ActivityForm';
 import { BookForm } from '../components/admin/BookForm';
 import { CourseForm } from '../components/admin/CourseForm';
-import { PresentationForm } from '../components/admin/PresentationForm';
-import { IdeasForm } from '../components/IdeasForm';
+// import { PresentationForm } from '../components/admin/PresentationForm';
+import { BooksLibraryManager } from '../components/admin/BooksLibraryManager';
+import { TopPerformerForm } from '../components/admin/TopPerformerForm';
+import { PresentationsManager } from '../components/admin/PresentationsManager';
+import { BlogsManager } from '../components/admin/BlogsManager';
+import { IdeasManager } from '../components/admin/IdeasManager';
+import { UsersManager } from '../components/admin/UsersManager';
+// import { IdeasForm } from '../components/IdeasForm';
 import { StreaksPanel } from '../components/admin/StreaksPanel';
 
 /**
@@ -29,10 +35,13 @@ const ADMIN_TABS = [
   { id: 'activities', label: 'Activities', icon: Trophy },
   { id: 'courses', label: 'Courses', icon: BookOpen },
   { id: 'books', label: 'Books', icon: BookOpen },
+  { id: 'books-library', label: 'Books Library', icon: BookOpen },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
   { id: 'presentations', label: 'Presentations', icon: Presentation },
+  { id: 'top-performer', label: 'Top Performer', icon: Award },
   { id: 'penalties', label: 'Penalties', icon: AlertTriangle },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
+  { id: 'users', label: 'Users', icon: Users },
   { id: 'streaks', label: 'Streaks & Bonuses', icon: Zap },
 ] as const;
 
@@ -133,16 +142,17 @@ export function AdminDashboard() {
         {activeTab === 'books' && (
           <BookForm players={entries} />
         )}
+        {activeTab === 'books-library' && (
+          <BooksLibraryManager />
+        )}
         {activeTab === 'blogs' && (
-          <PointsForm 
-            title="Blog Points"
-            description="First blog: 30 pts, subsequent blogs: 20 pts each"
-            players={entries}
-            category="blog"
-          />
+          <BlogsManager />
         )}
         {activeTab === 'presentations' && (
-          <PresentationForm players={entries} />
+          <PresentationsManager />
+        )}
+        {activeTab === 'top-performer' && (
+          <TopPerformerForm players={entries} />
         )}
         {activeTab === 'penalties' && (
           <PointsForm 
@@ -154,7 +164,10 @@ export function AdminDashboard() {
           />
         )}
         {activeTab === 'ideas' && (
-          <IdeasForm players={entries} />
+          <IdeasManager players={entries} />
+        )}
+        {activeTab === 'users' && (
+          <UsersManager />
         )}
         {activeTab === 'streaks' && (
           <StreaksPanel 
