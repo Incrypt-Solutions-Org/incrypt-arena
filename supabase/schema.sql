@@ -31,8 +31,10 @@ DROP VIEW IF EXISTS leaderboard CASCADE;
 
 CREATE TABLE players (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  auth_id UUID UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  is_admin BOOLEAN DEFAULT false,
   far_away BOOLEAN DEFAULT false,
   avatar_url TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -155,20 +157,7 @@ CREATE TABLE books_library (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- ============================================
--- IDEAS TABLE
--- Employee ideas and innovations
--- ============================================
-CREATE TABLE ideas (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-  cycle_id UUID REFERENCES cycles(id) ON DELETE CASCADE,
-  title VARCHAR(255) NOT NULL,
-  description TEXT,
-  points INTEGER NOT NULL,
-  date DATE DEFAULT CURRENT_DATE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Note: IDEAS table is defined below after ACTIVITY_PARTICIPATIONS
 
 -- ============================================
 -- TOP PERFORMER AWARDS TABLE
@@ -279,7 +268,8 @@ CREATE TABLE penalties (
 -- LEADERBOARD VIEW
 -- Aggregated points for quick leaderboard queries
 -- ============================================
-CREATE OR REPLACE VIEW leaderboard AS
+-- Use SECURITY INVOKER to respect RLS policies of the querying user
+CREATE OR REPLACE VIEW leaderboard WITH (security_invoker = true) AS
 WITH player_points AS (
   SELECT 
     p.id as player_id,
@@ -350,6 +340,7 @@ WITH player_points AS (
     ), 0) as penalty_points
     
   FROM players p
+  WHERE COALESCE(p.is_admin, false) = false
 )
 SELECT 
   player_id,
@@ -395,6 +386,13 @@ ALTER TABLE penalties ENABLE ROW LEVEL SECURITY;
 
 -- Public read access (anyone can view the leaderboard)
 CREATE POLICY "Public read players" ON players FOR SELECT USING (true);
+-- Players can insert their own record during signup (auth_id must match their auth.uid)
+CREATE POLICY "Auth insert own player" ON players FOR INSERT WITH CHECK (auth.uid() = auth_id);
+-- Players can update their own record
+CREATE POLICY "Auth update own player" ON players FOR UPDATE USING (auth.uid() = auth_id);
+-- Only the player themselves or admin can delete
+CREATE POLICY "Auth delete own player" ON players FOR DELETE USING (auth.uid() = auth_id);
+
 CREATE POLICY "Public read cycles" ON cycles FOR SELECT USING (true);
 CREATE POLICY "Public read attendance" ON attendance FOR SELECT USING (true);
 CREATE POLICY "Public read courses" ON courses FOR SELECT USING (true);
@@ -405,6 +403,9 @@ CREATE POLICY "Public read activities" ON activities FOR SELECT USING (true);
 CREATE POLICY "Public read activity_participations" ON activity_participations FOR SELECT USING (true);
 CREATE POLICY "Public read ideas" ON ideas FOR SELECT USING (true);
 CREATE POLICY "Public read penalties" ON penalties FOR SELECT USING (true);
+CREATE POLICY "Public read books" ON books FOR SELECT USING (true);
+CREATE POLICY "Public read books_library" ON books_library FOR SELECT USING (true);
+CREATE POLICY "Public read top_performer_awards" ON top_performer_awards FOR SELECT USING (true);
 
 -- Authenticated users (admins) can write
 -- Note: Admins are managed via Supabase Auth, not in this players table
@@ -429,5 +430,25 @@ CREATE POLICY "Auth update penalties" ON penalties FOR UPDATE USING (auth.uid() 
 CREATE POLICY "Auth delete penalties" ON penalties FOR DELETE USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Auth write activities" ON activities FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update activities" ON activities FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete activities" ON activities FOR DELETE USING (auth.uid() IS NOT NULL);
+
 CREATE POLICY "Auth write activity_participations" ON activity_participations FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update activity_participations" ON activity_participations FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete activity_participations" ON activity_participations FOR DELETE USING (auth.uid() IS NOT NULL);
+
 CREATE POLICY "Auth write ideas" ON ideas FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update ideas" ON ideas FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete ideas" ON ideas FOR DELETE USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Auth write books" ON books FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update books" ON books FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete books" ON books FOR DELETE USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Auth write books_library" ON books_library FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update books_library" ON books_library FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete books_library" ON books_library FOR DELETE USING (auth.uid() IS NOT NULL);
+
+CREATE POLICY "Auth write top_performer_awards" ON top_performer_awards FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth update top_performer_awards" ON top_performer_awards FOR UPDATE USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Auth delete top_performer_awards" ON top_performer_awards FOR DELETE USING (auth.uid() IS NOT NULL);

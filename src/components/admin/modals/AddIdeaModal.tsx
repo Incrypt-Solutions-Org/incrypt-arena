@@ -4,7 +4,8 @@
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { db } from '../../../lib/supabaseApi';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface Player { player_id: string; player_name: string; }
 
@@ -16,6 +17,7 @@ interface AddIdeaModalProps {
 }
 
 export function AddIdeaModal({ isOpen, onClose, onSuccess, players }: AddIdeaModalProps) {
+  const { session } = useAuth();
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -29,10 +31,11 @@ export function AddIdeaModal({ isOpen, onClose, onSuccess, players }: AddIdeaMod
 
     setIsSubmitting(true);
     try {
-      if (isSupabaseConfigured()) {
-        const { data: cycle } = await supabase.from('cycles').select('id').eq('is_active', true).single();
-        if (!cycle) throw new Error('No active cycle');
-        await supabase.from('ideas').insert({ player_id: selectedPlayer, cycle_id: cycle.id, title: title.trim(), description: description.trim() || null, points: parseInt(points), date });
+      if (db.isConfigured()) {
+        const { data: cycles } = await db.select<{ id: string }[]>('cycles', { columns: 'id', filters: { 'is_active': 'eq.true' }, limit: 1 });
+        if (!cycles || cycles.length === 0) throw new Error('No active cycle');
+        const cycle = cycles[0];
+        await db.insert('ideas', { player_id: selectedPlayer, cycle_id: cycle.id, title: title.trim(), description: description.trim() || null, points: parseInt(points), date }, { authToken: session?.access_token });
       }
       setSelectedPlayer('');
       setTitle('');
@@ -50,7 +53,7 @@ export function AddIdeaModal({ isOpen, onClose, onSuccess, players }: AddIdeaMod
 
   return (
     <AnimatePresence>
-{isOpen && (
+      {isOpen && (
         <>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50" />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-4">

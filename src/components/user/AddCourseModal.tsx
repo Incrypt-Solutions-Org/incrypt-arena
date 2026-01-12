@@ -4,7 +4,8 @@
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AddCourseModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface AddCourseModalProps {
 }
 
 export function AddCourseModal({ isOpen, onClose, onSuccess, userId }: AddCourseModalProps) {
+  const { session } = useAuth();
   const [name, setName] = useState('');
   const [courseUrl, setCourseUrl] = useState('');
   const [notesUrl, setNotesUrl] = useState('');
@@ -36,11 +38,16 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, userId }: AddCourse
     setError(null);
 
     try {
-      if (isSupabaseConfigured()) {
-        const { data: cycle } = await supabase.from('cycles').select('id').eq('is_active', true).single();
-        if (!cycle) throw new Error('No active cycle');
+      if (db.isConfigured()) {
+        const { data: cycles } = await db.select<{ id: string }[]>('cycles', {
+          columns: 'id',
+          filters: { 'is_active': 'eq.true' },
+          limit: 1,
+        });
+        if (!cycles || cycles.length === 0) throw new Error('No active cycle');
+        const cycle = cycles[0];
 
-        await supabase.from('courses').insert({
+        const { error: insertError } = await db.insert('courses', {
           player_id: userId,
           cycle_id: cycle.id,
           name: name.trim(),
@@ -48,7 +55,9 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, userId }: AddCourse
           notes_link: notesUrl.trim() || null,
           total_hours: parseFloat(hours),
           completion_percent: completionNum,
-        });
+        }, { authToken: session?.access_token });
+
+        if (insertError) throw new Error(insertError.message);
       }
 
       setName('');
@@ -84,11 +93,11 @@ export function AddCourseModal({ isOpen, onClose, onSuccess, userId }: AddCourse
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Course URL</label>
-                  <input type="url" value={courseUrl} onChange={(e) => setCourseUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
+                  <input type="text" value={courseUrl} onChange={(e) => setCourseUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Notes URL</label>
-                  <input type="url" value={notesUrl} onChange={(e) => setNotesUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
+                  <input type="text" value={notesUrl} onChange={(e) => setNotesUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Number of Hours *</label>

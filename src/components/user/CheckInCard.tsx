@@ -4,10 +4,12 @@
  */
 import { useState, useEffect } from 'react';
 import { Calendar, Clock, Check, PartyPopper } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface CheckInCardProps {
   userId: string;
+  onSuccess?: () => void;
 }
 
 function getLastWednesday(): Date {
@@ -35,7 +37,8 @@ function formatDisplayDate(date: Date): string {
   });
 }
 
-export function CheckInCard({ userId }: CheckInCardProps) {
+export function CheckInCard({ userId, onSuccess }: CheckInCardProps) {
+  const { session } = useAuth();
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isEarlyBird, setIsEarlyBird] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,27 +46,21 @@ export function CheckInCard({ userId }: CheckInCardProps) {
 
   const lastWednesday = getLastWednesday();
   const lastWednesdayStr = formatDate(lastWednesday);
-  const isToday = formatDate(new Date()) === lastWednesdayStr;
 
   // Check if already checked in
   useEffect(() => {
     async function checkStatus() {
-      if (!isSupabaseConfigured()) return;
+      if (!db.isConfigured()) return;
 
-      try {
-        const { data } = await supabase
-          .from('attendance')
-          .select('id, is_early_bird')
-          .eq('player_id', userId)
-          .eq('check_in_date', lastWednesdayStr)
-          .single();
+      const { data } = await db.select<{ id: string; is_early_bird: boolean }[]>('attendance', {
+        columns: 'id,is_early_bird',
+        filters: { 'player_id': `eq.${userId}`, 'check_in_date': `eq.${lastWednesdayStr}` },
+        limit: 1,
+      });
 
-        if (data) {
-          setIsCheckedIn(true);
-          setIsEarlyBird(data.is_early_bird);
-        }
-      } catch (err) {
-        // Not checked in yet
+      if (data && data.length > 0) {
+        setIsCheckedIn(true);
+        setIsEarlyBird(data[0].is_early_bird);
       }
     }
 
@@ -75,29 +72,31 @@ export function CheckInCard({ userId }: CheckInCardProps) {
     setSuccessMessage(null);
 
     try {
-      if (isSupabaseConfigured()) {
+      if (db.isConfigured()) {
         // Get active cycle
-        const { data: cycle } = await supabase
-          .from('cycles')
-          .select('id')
-          .eq('is_active', true)
-          .single();
+        const { data: cycles } = await db.select<{ id: string }[]>('cycles', {
+          columns: 'id',
+          filters: { 'is_active': 'eq.true' },
+          limit: 1,
+        });
 
-        if (!cycle) throw new Error('No active cycle found');
+        if (!cycles || cycles.length === 0) throw new Error('No active cycle found');
+        const cycle = cycles[0];
 
-        const { error } = await supabase.from('attendance').insert({
+        const { error } = await db.insert('attendance', {
           player_id: userId,
           cycle_id: cycle.id,
           check_in_date: lastWednesdayStr,
           check_in_time: new Date().toTimeString().split(' ')[0],
           is_early_bird: isEarlyBird,
           points: 1,
-        });
+        }, { authToken: session?.access_token });
 
-        if (error) throw error;
+        if (error) throw new Error(error.message);
 
         setIsCheckedIn(true);
         setSuccessMessage(isEarlyBird ? '🎉 Early bird check-in recorded! (+1 point + bonus)' : '✅ Check-in recorded! (+1 point)');
+        if (onSuccess) onSuccess();
       }
     } catch (err) {
       console.error('Check-in error:', err);
@@ -121,7 +120,7 @@ export function CheckInCard({ userId }: CheckInCardProps) {
             <span className="text-gray-400 text-sm">Check-in for:</span>
             <span className="text-white font-medium">{formatDisplayDate(lastWednesday)}</span>
           </div>
-          {isToday && (
+          {formatDate(new Date()) === lastWednesdayStr && (
             <div className="flex items-center gap-2 text-success text-sm">
               <Clock className="w-4 h-4" />
               <span>Today is Wednesday!</span>

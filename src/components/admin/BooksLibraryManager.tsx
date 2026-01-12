@@ -12,6 +12,7 @@ interface Book {
   name: string;
   author: string | null;
   category: string | null;
+  total_pages: number | null;
   points_per_10_pages: number;
   created_at: string;
 }

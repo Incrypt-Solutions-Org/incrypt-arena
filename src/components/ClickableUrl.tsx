@@ -16,9 +16,11 @@ export function ClickableUrl({ url, label, className = '', showIcon = true }: Cl
     return <span className="text-gray-500">—</span>;
   }
 
+  const href = url && (url.startsWith('http://') || url.startsWith('https://')) ? url : `https://${url}`;
+
   return (
     <a
-      href={url}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className={`text-neon-blue hover:text-neon-blue/80 transition-colors flex items-center gap-1 w-fit ${className}`}

@@ -7,9 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   Users, Calendar, BookOpen, PenTool, Presentation, 
-  Trophy, AlertTriangle, LogOut, Lightbulb, Zap, Award
+  Trophy, AlertTriangle, LogOut, Lightbulb, Zap
 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useAdvancedScoring } from '../hooks/useAdvancedScoring';
 import { AttendanceForm } from '../components/admin/AttendanceForm';
@@ -19,7 +19,6 @@ import { BookForm } from '../components/admin/BookForm';
 import { CourseForm } from '../components/admin/CourseForm';
 // import { PresentationForm } from '../components/admin/PresentationForm';
 import { BooksLibraryManager } from '../components/admin/BooksLibraryManager';
-import { TopPerformerForm } from '../components/admin/TopPerformerForm';
 import { PresentationsManager } from '../components/admin/PresentationsManager';
 import { BlogsManager } from '../components/admin/BlogsManager';
 import { IdeasManager } from '../components/admin/IdeasManager';
@@ -38,7 +37,6 @@ const ADMIN_TABS = [
   { id: 'books-library', label: 'Books Library', icon: BookOpen },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
   { id: 'presentations', label: 'Presentations', icon: Presentation },
-  { id: 'top-performer', label: 'Top Performer', icon: Award },
   { id: 'penalties', label: 'Penalties', icon: AlertTriangle },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'users', label: 'Users', icon: Users },
@@ -150,9 +148,6 @@ export function AdminDashboard() {
         )}
         {activeTab === 'presentations' && (
           <PresentationsManager />
-        )}
-        {activeTab === 'top-performer' && (
-          <TopPerformerForm players={entries} />
         )}
         {activeTab === 'penalties' && (
           <PointsForm 

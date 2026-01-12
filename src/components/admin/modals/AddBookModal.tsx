@@ -17,6 +17,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess }: AddBookModalProps) 
   const [name, setName] = useState('');
   const [author, setAuthor] = useState('');
   const [category, setCategory] = useState('');
+  const [totalPages, setTotalPages] = useState('');
   const [pointsPer10Pages, setPointsPer10Pages] = useState('1');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess }: AddBookModalProps) 
             name: name.trim(),
             author: author.trim() || null,
             category: category.trim() || null,
+            total_pages: totalPages ? parseInt(totalPages) : null,
             points_per_10_pages: parseInt(pointsPer10Pages),
           });
 
@@ -46,6 +48,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess }: AddBookModalProps) 
       setName('');
       setAuthor('');
       setCategory('');
+      setTotalPages('');
       setPointsPer10Pages('1');
       
       onSuccess();
@@ -63,6 +66,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess }: AddBookModalProps) 
       setName('');
       setAuthor('');
       setCategory('');
+      setTotalPages('');
       setPointsPer10Pages('1');
       setError(null);
       onClose();
@@ -150,6 +154,23 @@ export function AddBookModal({ isOpen, onClose, onSuccess }: AddBookModalProps) 
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                     placeholder="e.g., Software, Business, Management"
+                    className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                             text-white focus:border-neon-blue focus:outline-none"
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                {/* Total Pages */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Total Pages
+                  </label>
+                  <input
+                    type="number"
+                    value={totalPages}
+                    onChange={(e) => setTotalPages(e.target.value)}
+                    placeholder="e.g., 464"
+                    min="1"
                     className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
                              text-white focus:border-neon-blue focus:outline-none"
                     disabled={isSubmitting}

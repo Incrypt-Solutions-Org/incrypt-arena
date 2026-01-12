@@ -13,6 +13,7 @@ interface Book {
   name: string;
   author: string | null;
   category: string | null;
+  total_pages: number | null;
   points_per_10_pages: number;
   created_at: string;
 }
@@ -52,6 +53,7 @@ export function BooksLibraryPanel({ onOpenAddModal, onOpenEditModal }: BooksLibr
           name: 'Clean Code',
           author: 'Robert C. Martin',
           category: 'Software',
+          total_pages: 464,
           points_per_10_pages: 1,
           created_at: new Date().toISOString(),
         },
@@ -60,6 +62,7 @@ export function BooksLibraryPanel({ onOpenAddModal, onOpenEditModal }: BooksLibr
           name: 'The Lean Startup',
           author: 'Eric Ries',
           category: 'Business',
+          total_pages: 336,
           points_per_10_pages: 1,
           created_at: new Date().toISOString(),
         },
@@ -152,7 +155,8 @@ export function BooksLibraryPanel({ onOpenAddModal, onOpenEditModal }: BooksLibr
                   <th className="px-4 py-3 text-left text-gray-400 font-medium">Book Name</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-medium">Author</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-medium">Category</th>
-                  <th className="px-4 py-3 text-center text-gray-400 font-medium">Points/10 Pages</th>
+                  <th className="px-4 py-3 text-center text-gray-400 font-medium">Pages</th>
+                  <th className="px-4 py-3 text-center text-gray-400 font-medium">Pts/10pg</th>
                   <th className="px-4 py-3 text-center text-gray-400 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -168,6 +172,7 @@ export function BooksLibraryPanel({ onOpenAddModal, onOpenEditModal }: BooksLibr
                     <td className="px-4 py-3 text-white font-medium">{book.name}</td>
                     <td className="px-4 py-3 text-gray-300">{book.author || '—'}</td>
                     <td className="px-4 py-3 text-gray-300">{book.category || '—'}</td>
+                    <td className="px-4 py-3 text-center text-gray-300">{book.total_pages || '—'}</td>
                     <td className="px-4 py-3 text-center">
                       <span className="text-neon-blue font-medium">{book.points_per_10_pages}</span>
                     </td>

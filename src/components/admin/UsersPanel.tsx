@@ -4,13 +4,14 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Edit } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
 
 interface UserRecord {
   id: string;
   name: string;
   email: string;
   far_away: boolean;
+  is_admin: boolean;
   total_points: number;
 }
 
@@ -24,12 +25,12 @@ export function UsersPanel({ onOpenEditModal }: UsersPanelProps) {
 
   const loadUsers = async () => {
     setIsLoading(true);
-    if (isSupabaseConfigured()) {
+    if (db.isConfigured()) {
       try {
-        const { data, error } = await supabase.from('players').select('*').order('name');
-        if (!error && data) {
+        const { data } = await db.select<UserRecord[]>('players', { columns: '*', order: 'name.asc' });
+        if (data) {
           // Get total points from leaderboard
-          const { data: lbData } = await supabase.from('leaderboard').select('player_id, total_points');
+          const { data: lbData } = await db.select<{ player_id: string; total_points: number }[]>('leaderboard', { columns: 'player_id,total_points' });
           const pointsMap = new Map(lbData?.map(l => [l.player_id, l.total_points]) || []);
           setUsers(data.map(u => ({ ...u, total_points: pointsMap.get(u.id) || 0 })));
         }
@@ -49,10 +50,7 @@ export function UsersPanel({ onOpenEditModal }: UsersPanelProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
-          <Users className="w-5 h-5 text-neon-blue" />
-          Users Management
-        </h2>
+        <h2 className="font-display text-xl font-bold text-white flex items-center gap-2"><Users className="w-5 h-5 text-neon-blue" />Users Management</h2>
         <p className="text-sm text-gray-400 mt-1">Manage user settings and far away status</p>
       </div>
 
@@ -68,6 +66,7 @@ export function UsersPanel({ onOpenEditModal }: UsersPanelProps) {
                 <tr className="bg-cyber-darker border-b border-gray-700">
                   <th className="px-4 py-3 text-left text-gray-400 font-medium">User Name</th>
                   <th className="px-4 py-3 text-left text-gray-400 font-medium">Email</th>
+                  <th className="px-4 py-3 text-center text-gray-400 font-medium">Role</th>
                   <th className="px-4 py-3 text-center text-gray-400 font-medium">Far Away</th>
                   <th className="px-4 py-3 text-center text-gray-400 font-medium">Total Points</th>
                   <th className="px-4 py-3 text-center text-gray-400 font-medium">Actions</th>
@@ -78,17 +77,10 @@ export function UsersPanel({ onOpenEditModal }: UsersPanelProps) {
                   <motion.tr key={user.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
                     <td className="px-4 py-3 text-white font-medium">{user.name}</td>
                     <td className="px-4 py-3 text-gray-300">{user.email}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className={`px-2 py-1 rounded-full text-xs ${user.far_away ? 'bg-neon-blue/20 text-neon-blue' : 'bg-gray-700 text-gray-400'}`}>
-                        {user.far_away ? '✓ Yes (2× pts)' : '✗ No'}
-                      </span>
-                    </td>
+                    <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs font-medium ${user.is_admin ? 'bg-neon-purple/20 text-neon-purple' : 'bg-gray-700 text-gray-400'}`}>{user.is_admin ? '👑 Admin' : 'Player'}</span></td>
+                    <td className="px-4 py-3 text-center"><span className={`px-2 py-1 rounded-full text-xs ${user.far_away ? 'bg-neon-blue/20 text-neon-blue' : 'bg-gray-700 text-gray-400'}`}>{user.far_away ? '✓ Yes (2× pts)' : '✗ No'}</span></td>
                     <td className="px-4 py-3 text-center text-gray-300 font-medium">{user.total_points}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center">
-                        <button onClick={() => onOpenEditModal(user)} className="p-2 text-neon-blue hover:bg-neon-blue/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                      </div>
-                    </td>
+                    <td className="px-4 py-3"><div className="flex items-center justify-center"><button onClick={() => onOpenEditModal(user)} className="p-2 text-neon-blue hover:bg-neon-blue/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button></div></td>
                   </motion.tr>
                 ))}
               </tbody>

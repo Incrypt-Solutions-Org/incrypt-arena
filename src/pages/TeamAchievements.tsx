@@ -4,15 +4,18 @@
  */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, BookOpen, PenTool, Presentation as PresentationIcon } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { GraduationCap, BookOpen, PenTool, Presentation as PresentationIcon, Trophy, Calendar, Lightbulb } from 'lucide-react';
+import { db } from '../lib/supabaseApi';
 import { ClickableUrl } from '../components/ClickableUrl';
 
 const TEAM_TABS = [
+  { id: 'activities', label: 'Activities', icon: Trophy },
+  { id: 'attendance', label: 'Attendance', icon: Calendar },
   { id: 'courses', label: 'Courses', icon: GraduationCap },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
   { id: 'books', label: 'Books', icon: BookOpen },
   { id: 'presentations', label: 'Presentations', icon: PresentationIcon },
+  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
 ] as const;
 
 type TeamTabId = typeof TEAM_TABS[number]['id'];
@@ -25,6 +28,7 @@ interface CourseRecord {
   notes_link: string | null;
   total_hours: number;
   completion_percent: number;
+  players?: { name: string };
 }
 
 interface BlogRecord {
@@ -32,6 +36,7 @@ interface BlogRecord {
   name: string;
   url: string;
   player_name: string;
+  players?: { name: string };
 }
 
 interface BookRecord {
@@ -41,6 +46,7 @@ interface BookRecord {
   pages_read: number;
   notes_link: string | null;
   book_url: string | null;
+  players?: { name: string };
 }
 
 interface PresentationRecord {
@@ -50,14 +56,47 @@ interface PresentationRecord {
   slides_url: string | null;
   eval_link: string | null;
   youtube_url: string | null;
+  players?: { name: string };
+  second_presenter?: { name: string };
+}
+
+interface ActivityRecord {
+  id: string;
+  name: string;
+  date: string;
+  activity_type: string;
+  participations: { player_name: string; points: number; is_top_performer: boolean }[];
+}
+
+interface AttendanceRecord {
+  id: string;
+  player_name: string;
+  check_in_date: string;
+  points: number;
+  is_early_bird: boolean;
+  players?: { name: string };
+}
+
+interface IdeaRecord {
+  id: string;
+  title: string;
+  description: string | null;
+  idea_type: string | null;
+  player_name: string;
+  points: number;
+  verified: boolean;
+  players?: { name: string };
 }
 
 export default function TeamAchievements() {
-  const [activeTab, setActiveTab] = useState<TeamTabId>('courses');
+  const [activeTab, setActiveTab] = useState<TeamTabId>('activities');
   const [courses, setCourses] = useState<CourseRecord[]>([]);
   const [blogs, setBlogs] = useState<BlogRecord[]>([]);
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [presentations, setPresentations] = useState<PresentationRecord[]>([]);
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [ideas, setIdeas] = useState<IdeaRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -66,27 +105,75 @@ export default function TeamAchievements() {
 
   const loadData = async () => {
     setIsLoading(true);
-    if (!isSupabaseConfigured()) {
+    if (!db.isConfigured()) {
       setIsLoading(false);
       return;
     }
 
     try {
-      if (activeTab === 'courses') {
-        const { data } = await supabase.from('courses').select('*, players:player_id (name)').eq('verified', true);
-        setCourses(data?.map((c: any) => ({ ...c, player_name: c.players?.name || 'Unknown' })) || []);
+      if (activeTab === 'activities') {
+        // Get activities with participations
+        const { data: activitiesData } = await db.select<any[]>('activities', {
+          columns: '*',
+          order: 'date.desc',
+        });
+        if (activitiesData) {
+          // Get participations for each activity
+          const activitiesWithParticipations = await Promise.all(
+            activitiesData.map(async (a) => {
+              const { data: partData } = await db.select<any[]>('activity_participations', {
+                columns: '*,players:player_id(name)',
+                filters: { 'activity_id': `eq.${a.id}` },
+              });
+              return {
+                ...a,
+                participations: (partData || []).map(p => ({
+                  player_name: p.players?.name || 'Unknown',
+                  points: p.points,
+                  is_top_performer: p.is_top_performer,
+                })),
+              };
+            })
+          );
+          setActivities(activitiesWithParticipations);
+        }
+      } else if (activeTab === 'attendance') {
+        const { data } = await db.select<AttendanceRecord[]>('attendance', {
+          columns: '*,players:player_id(name)',
+          order: 'check_in_date.desc',
+        });
+        setAttendance(data?.map((a) => ({ ...a, player_name: a.players?.name || 'Unknown' })) || []);
+      } else if (activeTab === 'courses') {
+        const { data } = await db.select<CourseRecord[]>('courses', {
+          columns: '*,players:player_id(name)',
+        });
+        setCourses(data?.map((c) => ({ ...c, player_name: c.players?.name || 'Unknown' })) || []);
       } else if (activeTab === 'blogs') {
-        const { data } = await supabase.from('blogs').select('*, players:player_id (name)');
-        setBlogs(data?.map((b: any) => ({ ...b, player_name: b.players?.name || 'Unknown' })) || []);
+        const { data } = await db.select<BlogRecord[]>('blogs', {
+          columns: '*,players:player_id(name)',
+        });
+        setBlogs(data?.map((b) => ({ ...b, player_name: b.players?.name || 'Unknown' })) || []);
       } else if (activeTab === 'books') {
-        const { data } = await supabase.from('books').select('*, players:player_id (name)').eq('verified', true);
-        setBooks(data?.map((b: any) => ({ ...b, player_name: b.players?.name || 'Unknown' })) || []);
+        const { data } = await db.select<BookRecord[]>('books', {
+          columns: '*,players:player_id(name)',
+          filters: { 'verified': 'eq.true' },
+        });
+        setBooks(data?.map((b) => ({ ...b, player_name: b.players?.name || 'Unknown' })) || []);
       } else if (activeTab === 'presentations') {
-        const { data } = await supabase.from('presentations').select('*, players:player_id (name), second_presenter:second_presenter_id (name)');
-        setPresentations(data?.map((p: any) => ({
+        const { data } = await db.select<PresentationRecord[]>('presentations', {
+          columns: '*,players:player_id(name),second_presenter:second_presenter_id(name)',
+        });
+        setPresentations(data?.map((p) => ({
           ...p,
-          presenters: p.second_presenter ? `${p.players?.name} & ${p.second_presenter.name}` : p.players?.name
+          presenters: p.second_presenter ? `${p.players?.name} & ${p.second_presenter.name}` : p.players?.name || 'Unknown'
         })) || []);
+      } else if (activeTab === 'ideas') {
+        const { data } = await db.select<IdeaRecord[]>('ideas', {
+          columns: '*,players:player_id(name)',
+          filters: { 'verified': 'eq.true' },
+          order: 'created_at.desc',
+        });
+        setIdeas(data?.map((i) => ({ ...i, player_name: i.players?.name || 'Unknown' })) || []);
       }
     } catch (err) {
       console.error('Failed to load data:', err);
@@ -120,6 +207,62 @@ export default function TeamAchievements() {
             <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
           ) : (
             <div className="overflow-x-auto">
+              {/* Activities Tab */}
+              {activeTab === 'activities' && (
+                <div className="space-y-4">
+                  {activities.length === 0 ? (
+                    <div className="text-center text-gray-400 py-8">No activities recorded yet.</div>
+                  ) : (
+                    activities.map(a => (
+                      <div key={a.id} className="p-4 bg-cyber-darker rounded-lg border border-gray-700">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="text-white font-bold">{a.name}</h3>
+                            <p className="text-sm text-gray-400">{new Date(a.date).toLocaleDateString()}</p>
+                          </div>
+                          <span className="px-2 py-1 bg-neon-blue/20 text-neon-blue text-xs rounded">{a.activity_type}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {a.participations.map((p, i) => (
+                            <div key={i} className={`px-3 py-1 rounded text-sm ${p.is_top_performer ? 'bg-gold/20 text-gold border border-gold/50' : 'bg-gray-700 text-gray-300'}`}>
+                              {p.player_name} <span className="font-bold">+{p.points}</span>
+                              {p.is_top_performer && ' ⭐'}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {/* Attendance Tab */}
+              {activeTab === 'attendance' && (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-cyber-darker border-b border-gray-700">
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Team Member</th>
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Check-in Date</th>
+                      <th className="px-4 py-3 text-center text-gray-400 font-medium">Early Bird</th>
+                      <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendance.map(a => (
+                      <tr key={a.id} className="border-b border-gray-700/50">
+                        <td className="px-4 py-3 text-white">{a.player_name}</td>
+                        <td className="px-4 py-3 text-gray-300">{new Date(a.check_in_date).toLocaleDateString()}</td>
+                        <td className="px-4 py-3 text-center">
+                          {a.is_early_bird ? <span className="text-gold">🌅 Yes</span> : <span className="text-gray-500">No</span>}
+                        </td>
+                        <td className="px-4 py-3 text-center text-success font-bold">+{a.points + (a.is_early_bird ? 1 : 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Courses Tab */}
               {activeTab === 'courses' && (
                 <table className="w-full">
                   <thead>
@@ -147,6 +290,7 @@ export default function TeamAchievements() {
                 </table>
               )}
 
+              {/* Blogs Tab */}
               {activeTab === 'blogs' && (
                 <table className="w-full">
                   <thead>
@@ -168,6 +312,7 @@ export default function TeamAchievements() {
                 </table>
               )}
 
+              {/* Books Tab */}
               {activeTab === 'books' && (
                 <table className="w-full">
                   <thead>
@@ -193,6 +338,7 @@ export default function TeamAchievements() {
                 </table>
               )}
 
+              {/* Presentations Tab */}
               {activeTab === 'presentations' && (
                 <table className="w-full">
                   <thead>
@@ -214,6 +360,40 @@ export default function TeamAchievements() {
                         <td className="px-4 py-3"><ClickableUrl url={p.youtube_url} label="Watch" /></td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Ideas Tab */}
+              {activeTab === 'ideas' && (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-cyber-darker border-b border-gray-700">
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Title</th>
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Type</th>
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Team Member</th>
+                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Description</th>
+                      <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ideas.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No approved ideas yet.</td></tr>
+                    ) : (
+                      ideas.map(i => (
+                        <tr key={i.id} className="border-b border-gray-700/50">
+                          <td className="px-4 py-3 text-white font-medium">{i.title}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${i.idea_type === 'tool' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-gold/20 text-gold'}`}>
+                              {i.idea_type === 'tool' ? '🔧 Tool' : '💡 Idea'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-300">{i.player_name}</td>
+                          <td className="px-4 py-3 text-gray-400 text-sm max-w-xs truncate">{i.description || '—'}</td>
+                          <td className="px-4 py-3 text-center text-success font-bold">+{i.points}</td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               )}

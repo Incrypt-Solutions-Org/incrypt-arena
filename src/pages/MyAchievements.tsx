@@ -2,13 +2,15 @@
  * My Achievements Page
  * Personal tracking page for logged-in users
  */
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, GraduationCap, PenTool, Trophy, Calendar, Presentation as PresentationIcon, AlertTriangle, Award } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { BookOpen, GraduationCap, PenTool, Trophy, Calendar, Presentation as PresentationIcon, AlertTriangle, Award, Check, Lightbulb } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/supabaseApi';
 import { AddCourseModal } from '../components/user/AddCourseModal';
 import { AddBookModal } from '../components/user/AddBookModal';
 import { AddBlogModal } from '../components/user/AddBlogModal';
+import { AddIdeaModal } from '../components/user/AddIdeaModal';
 import { CheckInCard } from '../components/user/CheckInCard';
 
 const PERFORMANCE_TABS = [
@@ -18,6 +20,7 @@ const PERFORMANCE_TABS = [
   { id: 'courses', label: 'Courses', icon: GraduationCap },
   { id: 'books', label: 'Books', icon: BookOpen },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
+  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'penalties', label: 'Penalties', icon: AlertTriangle },
   { id: 'rewards', label: 'Rewards', icon: Award },
 ] as const;
@@ -30,6 +33,119 @@ export default function MyAchievements() {
   const [isAddCourseOpen, setIsAddCourseOpen] = useState(false);
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isAddBlogOpen, setIsAddBlogOpen] = useState(false);
+  const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false);
+
+  const [attendance, setAttendance] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [books, setBooks] = useState<any[]>([]);
+  const [blogs, setBlogs] = useState<any[]>([]);
+  const [ideas, setIdeas] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const ensureProtocol = (link: string) => {
+    if (!link) return '';
+    if (link.startsWith('http://') || link.startsWith('https://')) return link;
+    return `https://${link}`;
+  };
+
+  const fetchAttendance = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('attendance', {
+        columns: '*',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'check_in_date.desc',
+      });
+      if (data) setAttendance(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch attendance:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  const fetchCourses = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('courses', {
+        columns: '*',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'created_at.desc',
+      });
+      if (data) setCourses(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch courses:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  const fetchBooks = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('books', {
+        columns: '*',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'created_at.desc',
+      });
+      if (data) setBooks(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch books:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  const fetchBlogs = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('blogs', {
+        columns: '*',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'created_at.desc',
+      });
+      if (data) setBlogs(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch blogs:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  const fetchIdeas = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('ideas', {
+        columns: '*',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'created_at.desc',
+      });
+      if (data) setIdeas(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch ideas:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      fetchAttendance();
+    } else if (activeTab === 'courses') {
+      fetchCourses();
+    } else if (activeTab === 'books') {
+      fetchBooks();
+    } else if (activeTab === 'blogs') {
+      fetchBlogs();
+    } else if (activeTab === 'ideas') {
+      fetchIdeas();
+    }
+  }, [activeTab, fetchAttendance, fetchCourses, fetchBooks, fetchBlogs, fetchIdeas]);
 
   if (!user || !playerData) {
     return (
@@ -51,7 +167,7 @@ export default function MyAchievements() {
 
         {/* Wednesday Check-In Section */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <CheckInCard userId={playerData.id} />
+          <CheckInCard userId={playerData.id} onSuccess={fetchAttendance} />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="cyber-card p-6">
@@ -68,6 +184,10 @@ export default function MyAchievements() {
             <button onClick={() => setIsAddBlogOpen(true)} className="p-4 bg-gradient-to-r from-neon-pink/20 to-success/20 border border-neon-pink/30 rounded-lg hover:border-neon-pink transition-all group">
               <PenTool className="w-8 h-8 text-neon-pink mx-auto mb-2 group-hover:scale-110 transition-transform" />
               <span className="text-white font-medium">Add Blog</span>
+            </button>
+            <button onClick={() => setIsAddIdeaOpen(true)} className="p-4 bg-gradient-to-r from-gold/20 to-orange-500/20 border border-gold/30 rounded-lg hover:border-gold transition-all group">
+              <Lightbulb className="w-8 h-8 text-gold mx-auto mb-2 group-hover:scale-110 transition-transform" />
+              <span className="text-white font-medium">Add Idea/Tool</span>
             </button>
           </div>
         </motion.div>
@@ -86,21 +206,238 @@ export default function MyAchievements() {
             })}
           </div>
           <div className="min-h-[400px]">
-            {activeTab === 'attendance' && <div className="text-gray-400">Attendance records coming soon...</div>}
+            {activeTab === 'attendance' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : attendance.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No attendance records found.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Date</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Time</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendance.map((record, idx) => (
+                          <motion.tr key={record.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{new Date(record.check_in_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                            <td className="px-4 py-3 text-gray-300">{record.check_in_time?.slice(0, 5) || '—'}</td>
+                             <td className="px-4 py-3 text-center"><span className="text-success font-medium">+{record.points}</span></td>
+                             <td className="px-4 py-3 text-center">
+                               {record.is_early_bird ? (
+                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gold/20 text-gold text-xs font-medium"><Award className="w-3 h-3" />Early Bird</span>
+                               ) : (
+                                 <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neon-blue/20 text-neon-blue text-xs font-medium"><Check className="w-3 h-3" />Standard</span>
+                               )}
+                             </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'activities' && <div className="text-gray-400">Activities records coming soon...</div>}
             {activeTab === 'presentations' && <div className="text-gray-400">Presentations records coming soon...</div>}
-            {activeTab === 'courses' && <div className="text-gray-400">Courses records coming soon...</div>}
-            {activeTab === 'books' && <div className="text-gray-400">Books records coming soon...</div>}
-            {activeTab === 'blogs' && <div className="text-gray-400">Blogs records coming soon...</div>}
+            {activeTab === 'courses' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : courses.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No courses logged yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Course Name</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Hours</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Completion</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Links</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {courses.map((course, idx) => (
+                          <motion.tr key={course.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{course.name}</td>
+                            <td className="px-4 py-3 text-center text-gray-300">{course.total_hours}h</td>
+                            <td className="px-4 py-3 text-center text-gray-300">{course.completion_percent}%</td>
+                             <td className="px-4 py-3 text-center"><span className="text-neon-blue font-bold">+{course.points}</span></td>
+                             <td className="px-4 py-3 text-center">
+                               <div className="flex items-center justify-center gap-2">
+                                 {course.course_url && <a href={ensureProtocol(course.course_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Course Link"><GraduationCap className="w-4 h-4" /></a>}
+                                 {course.notes_link && <a href={ensureProtocol(course.notes_link)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Notes Link"><PenTool className="w-4 h-4" /></a>}
+                               </div>
+                             </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'books' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : books.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No books read yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Book Title</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Pages</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Progress</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {books.map((book, idx) => (
+                          <motion.tr key={book.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{book.title}</td>
+                            <td className="px-4 py-3 text-center text-gray-300">{book.pages_read} / {book.total_pages}</td>
+                             <td className="px-4 py-3 text-center">
+                               <div className="w-24 bg-gray-700 rounded-full h-2 mx-auto overflow-hidden">
+                                 <div className="bg-neon-blue h-full" style={{ width: `${Math.min(100, (book.pages_read / book.total_pages) * 100)}%` }}></div>
+                               </div>
+                             </td>
+                             <td className="px-4 py-3 text-center"><span className="text-neon-blue font-bold">+{book.points}</span></td>
+                             <td className="px-4 py-3 text-center">
+                               {book.notes_link ? (
+                                 <a href={ensureProtocol(book.notes_link)} target="_blank" rel="noopener noreferrer" className="inline-flex p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Notes Link"><PenTool className="w-4 h-4" /></a>
+                               ) : <span className="text-gray-600">—</span>}
+                             </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'blogs' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : blogs.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No blogs submitted yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Blog Name</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Type</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Link</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {blogs.map((blog, idx) => (
+                          <motion.tr key={blog.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{blog.name}</td>
+                            <td className="px-4 py-3 text-center">
+                              {blog.is_first ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gold/20 text-gold text-xs font-medium"><Award className="w-3 h-3" />First Blog</span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-neon-blue/20 text-neon-blue text-xs font-medium">Standard</span>
+                              )}
+                            </td>
+                             <td className="px-4 py-3 text-center"><span className="text-neon-blue font-bold">+{blog.points}</span></td>
+                             <td className="px-4 py-3 text-center">
+                               {blog.url ? (
+                                 <a href={ensureProtocol(blog.url)} target="_blank" rel="noopener noreferrer" className="inline-flex p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Read Blog"><BookOpen className="w-4 h-4" /></a>
+                               ) : <span className="text-gray-600">—</span>}
+                             </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            {activeTab === 'ideas' && (
+              <div>
+                {isLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="w-8 h-8 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : ideas.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <Lightbulb className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                    <p>No ideas submitted yet</p>
+                    <button onClick={() => setIsAddIdeaOpen(true)} className="mt-4 text-gold hover:underline">Submit your first idea!</button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker text-left">
+                          <th className="p-3 text-gray-400">Title</th>
+                          <th className="p-3 text-gray-400">Type</th>
+                          <th className="p-3 text-gray-400">Status</th>
+                          <th className="p-3 text-gray-400">Points</th>
+                          <th className="p-3 text-gray-400">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ideas.map((idea: any, idx: number) => (
+                          <motion.tr key={idea.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50">
+                            <td className="p-3">
+                              <div className="text-white font-medium">{idea.title}</div>
+                              {idea.description && <div className="text-gray-400 text-sm truncate max-w-xs">{idea.description}</div>}
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${idea.idea_type === 'tool' ? 'bg-neon-blue/20 text-neon-blue' : 'bg-gold/20 text-gold'}`}>
+                                {idea.idea_type === 'tool' ? '🔧 Tool' : '💡 Idea'}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              {idea.verified ? (
+                                <span className="px-2 py-1 rounded text-xs font-medium bg-success/20 text-success">✓ Approved</span>
+                              ) : (
+                                <span className="px-2 py-1 rounded text-xs font-medium bg-orange-500/20 text-orange-400">⏳ Pending</span>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <span className={`font-bold ${idea.points > 0 ? 'text-gold' : 'text-gray-500'}`}>
+                                {idea.points > 0 ? `+${idea.points}` : '—'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-400 text-sm">
+                              {new Date(idea.created_at).toLocaleDateString()}
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'penalties' && <div className="text-gray-400">Penalties records coming soon...</div>}
             {activeTab === 'rewards' && <div className="text-gray-400">Rewards records coming soon...</div>}
           </div>
         </motion.div>
       </div>
 
-      <AddCourseModal isOpen={isAddCourseOpen} onClose={() => setIsAddCourseOpen(false)} onSuccess={() => {}} userId={playerData.id} />
-      <AddBookModal isOpen={isAddBookOpen} onClose={() => setIsAddBookOpen(false)} onSuccess={() => {}} userId={playerData.id} />
-      <AddBlogModal isOpen={isAddBlogOpen} onClose={() => setIsAddBlogOpen(false)} onSuccess={() => {}} userId={playerData.id} />
+      <AddCourseModal isOpen={isAddCourseOpen} onClose={() => setIsAddCourseOpen(false)} onSuccess={fetchCourses} userId={playerData.id} />
+      <AddBookModal isOpen={isAddBookOpen} onClose={() => setIsAddBookOpen(false)} onSuccess={fetchBooks} userId={playerData.id} />
+      <AddBlogModal isOpen={isAddBlogOpen} onClose={() => setIsAddBlogOpen(false)} onSuccess={fetchBlogs} userId={playerData.id} />
+      <AddIdeaModal isOpen={isAddIdeaOpen} onClose={() => setIsAddIdeaOpen(false)} onSuccess={fetchIdeas} />
     </div>
   );
 }

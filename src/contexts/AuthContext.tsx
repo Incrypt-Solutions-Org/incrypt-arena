@@ -1,9 +1,9 @@
 /**
- * useAuth Hook - Role-Based Authentication
- * Manages authentication state with Supabase Auth
- * Fetches user role from players table using direct fetch
+ * AuthContext - Shared Authentication State
+ * Provides auth state to all components via React Context
  */
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { db } from '../lib/supabaseApi';
 import type { User, Session } from '@supabase/supabase-js';
@@ -15,7 +15,7 @@ interface PlayerData {
   is_admin: boolean;
 }
 
-interface UseAuthReturn {
+interface AuthContextType {
   session: Session | null;
   user: User | null;
   playerData: PlayerData | null;
@@ -28,6 +28,8 @@ interface UseAuthReturn {
   signUp: (name: string, email: string, password: string, isAdmin?: boolean) => Promise<boolean>;
 }
 
+const AuthContext = createContext<AuthContextType | null>(null);
+
 // Helper to wrap promises with timeout
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   return Promise.race([
@@ -38,14 +40,14 @@ function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
   ]);
 }
 
-export function useAuth(): UseAuthReturn {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [playerData, setPlayerData] = useState<PlayerData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch player data from database using direct fetch
+  // Fetch player data from database
   const fetchPlayerData = useCallback(async (authUser: User) => {
     if (!db.isConfigured()) return;
 
@@ -64,7 +66,6 @@ export function useAuth(): UseAuthReturn {
       if (data && data.length > 0) {
         setPlayerData(data[0]);
       } else {
-        // No player record found - this is normal for new users or unlinked accounts
         console.warn('No player record found for auth user');
         setPlayerData(null);
       }
@@ -74,7 +75,7 @@ export function useAuth(): UseAuthReturn {
     }
   }, []);
 
-  // Initialize auth state with timeout protection
+  // Initialize auth state
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       setIsLoading(false);
@@ -83,7 +84,6 @@ export function useAuth(): UseAuthReturn {
 
     let mounted = true;
 
-    // Get initial session with timeout
     const initAuth = async () => {
       try {
         const { data: { session } } = await withTimeout(
@@ -100,7 +100,6 @@ export function useAuth(): UseAuthReturn {
         }
       } catch (err) {
         console.error('Auth initialization error:', err);
-        // Auth timed out or failed - continue without session
       } finally {
         if (mounted) {
           setIsLoading(false);
@@ -135,9 +134,6 @@ export function useAuth(): UseAuthReturn {
     };
   }, [fetchPlayerData]);
 
-  /**
-   * Sign in with email and password
-   */
   const signIn = useCallback(async (email: string, password: string): Promise<boolean> => {
     setError(null);
     setIsLoading(true);
@@ -172,9 +168,6 @@ export function useAuth(): UseAuthReturn {
     }
   }, [fetchPlayerData]);
 
-  /**
-   * Sign up new user
-   */
   const signUp = useCallback(async (name: string, email: string, password: string, isAdmin: boolean = false): Promise<boolean> => {
     setError(null);
     setIsLoading(true);
@@ -186,7 +179,6 @@ export function useAuth(): UseAuthReturn {
     }
 
     try {
-      // 1. Create auth user
       const { data: authData, error: authError } = await withTimeout(
         supabase.auth.signUp({ email, password }),
         10000
@@ -196,7 +188,6 @@ export function useAuth(): UseAuthReturn {
       if (!authData.user) throw new Error('User creation failed');
       if (!authData.session) throw new Error('No session returned - email confirmation may be required');
 
-      // 2. Create player record using direct fetch with user's auth token
       const { error: playerError } = await db.insert('players', {
         auth_id: authData.user.id,
         name,
@@ -206,10 +197,10 @@ export function useAuth(): UseAuthReturn {
 
       if (playerError) throw new Error(playerError.message);
 
-      // 3. Fetch the created player data
-      await fetchPlayerData(authData.user);
+      // Immediately update state after successful signup
       setSession(authData.session);
       setUser(authData.user);
+      await fetchPlayerData(authData.user);
 
       setIsLoading(false);
       return true;
@@ -220,27 +211,24 @@ export function useAuth(): UseAuthReturn {
     }
   }, [fetchPlayerData]);
 
-  /**
-   * Sign out current user
-   */
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured()) return;
 
     try {
       await withTimeout(supabase.auth.signOut(), 5000);
+      setSession(null);
       setUser(null);
       setPlayerData(null);
       setError(null);
     } catch (err) {
       console.error('Sign out error:', err);
-      // Force clear state even if signOut fails
       setSession(null);
       setUser(null);
       setPlayerData(null);
     }
   }, []);
 
-  return {
+  const value: AuthContextType = {
     session,
     user,
     playerData,
@@ -252,4 +240,18 @@ export function useAuth(): UseAuthReturn {
     signOut,
     signUp,
   };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

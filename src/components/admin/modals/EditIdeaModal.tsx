@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { db } from '../../../lib/supabaseApi';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface IdeaRecord {
   id: string;
@@ -23,6 +24,7 @@ interface EditIdeaModalProps {
 }
 
 export function EditIdeaModal({ isOpen, idea, onClose, onSuccess }: EditIdeaModalProps) {
+  const { session } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [points, setPoints] = useState('');
@@ -44,8 +46,8 @@ export function EditIdeaModal({ isOpen, idea, onClose, onSuccess }: EditIdeaModa
 
     setIsSubmitting(true);
     try {
-      if (isSupabaseConfigured()) {
-        await supabase.from('ideas').update({ title: title.trim(), description: description.trim() || null, points: parseInt(points), date }).eq('id', idea.id);
+      if (db.isConfigured()) {
+        await db.update('ideas', { title: title.trim(), description: description.trim() || null, points: parseInt(points), date }, { 'id': `eq.${idea.id}` }, { authToken: session?.access_token });
       }
       onSuccess();
       onClose();

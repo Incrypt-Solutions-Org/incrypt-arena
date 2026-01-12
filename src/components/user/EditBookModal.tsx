@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Book {
   id: string;
@@ -23,6 +24,7 @@ interface EditBookModalProps {
 }
 
 export function EditBookModal({ isOpen, book, onClose, onSuccess }: EditBookModalProps) {
+  const { session } = useAuth();
   const [pagesRead, setPagesRead] = useState('');
   const [notesLink, setNotesLink] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,12 +42,14 @@ export function EditBookModal({ isOpen, book, onClose, onSuccess }: EditBookModa
 
     setIsSubmitting(true);
     try {
-      if (isSupabaseConfigured()) {
-        await supabase.from('books').update({
+      if (db.isConfigured()) {
+        const { error } = await db.update('books', {
           pages_read: parseFloat(pagesRead),
           total_pages: parseFloat(pagesRead),
           notes_link: notesLink.trim() || null,
-        }).eq('id', book.id);
+        }, { 'id': `eq.${book.id}` }, { authToken: session?.access_token });
+
+        if (error) throw new Error(error.message);
       }
 
       onSuccess();
@@ -78,7 +82,7 @@ export function EditBookModal({ isOpen, book, onClose, onSuccess }: EditBookModa
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Notes Link</label>
-                  <input type="url" value={notesLink} onChange={(e) => setNotesLink(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
+                  <input type="text" value={notesLink} onChange={(e) => setNotesLink(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
                 </div>
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={onClose} disabled={isSubmitting} className="flex-1 px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg">Cancel</button>

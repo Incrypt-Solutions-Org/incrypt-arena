@@ -4,7 +4,7 @@
  */
 import { Link, useLocation } from 'react-router-dom';
 import { Trophy, BookOpen, Shield, Gift, User, Users, LogOut } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 // Navigation links for players
 const PLAYER_NAV_LINKS = [

@@ -4,7 +4,8 @@
 import { useState } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AddBlogModalProps {
   isOpen: boolean;
@@ -14,6 +15,7 @@ interface AddBlogModalProps {
 }
 
 export function AddBlogModal({ isOpen, onClose, onSuccess, userId }: AddBlogModalProps) {
+  const { session } = useAuth();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -25,9 +27,12 @@ export function AddBlogModal({ isOpen, onClose, onSuccess, userId }: AddBlogModa
     setError(null);
 
     try {
-      if (isSupabaseConfigured()) {
+      if (db.isConfigured()) {
         // Check for duplicate URL
-        const { data: existing } = await supabase.from('blogs').select('id').eq('player_id', userId).eq('url', url.trim());
+        const { data: existing } = await db.select<{ id: string }[]>('blogs', {
+          columns: 'id',
+          filters: { 'player_id': `eq.${userId}`, 'url': `eq.${url.trim()}` },
+        });
         if (existing && existing.length > 0) {
           setError('You have already submitted this blog URL');
           setIsSubmitting(false);
@@ -35,30 +40,41 @@ export function AddBlogModal({ isOpen, onClose, onSuccess, userId }: AddBlogModa
         }
 
         // Check if first blog
-        const { data: userBlogs } = await supabase.from('blogs').select('id').eq('player_id', userId);
+        const { data: userBlogs } = await db.select<{ id: string }[]>('blogs', {
+          columns: 'id',
+          filters: { 'player_id': `eq.${userId}` },
+        });
         const isFirst = !userBlogs || userBlogs.length === 0;
         const points = isFirst ? 30 : 20;
 
-        const { data: cycle } = await supabase.from('cycles').select('id').eq('is_active', true).single();
-        if (!cycle) throw new Error('No active cycle');
+        const { data: cycles } = await db.select<{ id: string }[]>('cycles', {
+          columns: 'id',
+          filters: { 'is_active': 'eq.true' },
+          limit: 1,
+        });
+        if (!cycles || cycles.length === 0) throw new Error('No active cycle');
+        const cycle = cycles[0];
 
-        await supabase.from('blogs').insert({
+        const { error: insertError } = await db.insert('blogs', {
           player_id: userId,
           cycle_id: cycle.id,
           name: name.trim(),
           url: url.trim(),
           is_first: isFirst,
           points,
-        });
+        }, { authToken: session?.access_token });
+
+        if (insertError) throw new Error(insertError.message);
       }
 
       setName('');
       setUrl('');
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to add blog:', err);
-      if (err.message?.includes('duplicate') || err.code === '23505') {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('duplicate') || message.includes('23505')) {
         setError('This blog URL already exists in the system');
       } else {
         setError('Failed to add blog. Please try again.');
@@ -89,7 +105,7 @@ export function AddBlogModal({ isOpen, onClose, onSuccess, userId }: AddBlogModa
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Blog URL *</label>
-                  <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" required disabled={isSubmitting} />
+                  <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" required disabled={isSubmitting} />
                 </div>
                 {error && <div className="p-3 bg-danger/20 border border-danger/50 rounded-lg text-danger text-sm">{error}</div>}
                 <div className="flex gap-3 pt-4">

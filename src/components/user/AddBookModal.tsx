@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Book {
   id: string;
@@ -21,6 +22,7 @@ interface AddBookModalProps {
 }
 
 export function AddBookModal({ isOpen, onClose, onSuccess, userId }: AddBookModalProps) {
+  const { session } = useAuth();
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [books, setBooks] = useState<Book[]>([]);
@@ -30,25 +32,30 @@ export function AddBookModal({ isOpen, onClose, onSuccess, userId }: AddBookModa
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isOpen && isSupabaseConfigured()) {
+    if (isOpen && db.isConfigured()) {
       loadCategories();
     }
   }, [isOpen]);
 
   useEffect(() => {
-    if (selectedCategory && isSupabaseConfigured()) {
+    if (selectedCategory && db.isConfigured()) {
       loadBooks(selectedCategory);
     }
   }, [selectedCategory]);
 
   const loadCategories = async () => {
-    const { data } = await supabase.from('books_library').select('category').not('category', 'is', null);
+    const { data } = await db.select<{ category: string }[]>('books_library', {
+      columns: 'category',
+      filters: { 'category': 'not.is.null' },
+    });
     const uniqueCategories = [...new Set(data?.map(b => b.category).filter(Boolean) as string[])];
     setCategories(uniqueCategories);
   };
 
   const loadBooks = async (category: string) => {
-    const { data } = await supabase.from('books_library').select('*').eq('category', category);
+    const { data } = await db.select<Book[]>('books_library', {
+      filters: { 'category': `eq.${category}` },
+    });
     setBooks(data || []);
   };
 
@@ -60,18 +67,25 @@ export function AddBookModal({ isOpen, onClose, onSuccess, userId }: AddBookModa
 
     setIsSubmitting(true);
     try {
-      if (isSupabaseConfigured()) {
-        const { data: cycle } = await supabase.from('cycles').select('id').eq('is_active', true).single();
-        if (!cycle) throw new Error('No active cycle');
+      if (db.isConfigured()) {
+        const { data: cycles } = await db.select<{ id: string }[]>('cycles', {
+          columns: 'id',
+          filters: { 'is_active': 'eq.true' },
+          limit: 1,
+        });
+        if (!cycles || cycles.length === 0) throw new Error('No active cycle');
+        const cycle = cycles[0];
 
-        await supabase.from('books').insert({
+        const { error } = await db.insert('books', {
           player_id: userId,
           cycle_id: cycle.id,
           title: selectedBook.name,
           total_pages: parseFloat(pagesRead),
           pages_read: parseFloat(pagesRead),
           notes_link: notesLink.trim() || null,
-        });
+        }, { authToken: session?.access_token });
+
+        if (error) throw new Error(error.message);
       }
 
       setSelectedCategory('');
@@ -127,7 +141,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess, userId }: AddBookModa
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">Notes Link</label>
-                      <input type="url" value={notesLink} onChange={(e) => setNotesLink(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" />
+                      <input type="text" value={notesLink} onChange={(e) => setNotesLink(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" />
                     </div>
                     {parseFloat(pagesRead) > 0 && (
                       <div className="p-3 bg-success/20 border border-success/50 rounded-lg text-center">

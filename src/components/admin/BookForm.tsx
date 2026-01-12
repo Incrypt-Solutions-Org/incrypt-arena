@@ -2,8 +2,9 @@
  * BookForm Component
  * Form for logging book reading progress
  * Points: 1 point per 10 pages read
+ * Books are selected from the Books Library
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Send, Info } from 'lucide-react';
 import type { LeaderboardEntry } from '../../types';
@@ -13,15 +14,18 @@ interface BookFormProps {
   players: LeaderboardEntry[];
 }
 
-const BOOK_CATEGORIES = [
-  { id: 'software', name: 'Software', emoji: '💻' },
-  { id: 'management', name: 'Management', emoji: '📊' },
-  { id: 'business', name: 'Business', emoji: '💼' },
-  { id: 'soft_skills', name: 'Soft Skills', emoji: '🧠' },
-] as const;
+interface LibraryBook {
+  id: string;
+  name: string;
+  author: string | null;
+  category: string | null;
+  total_pages: number | null;
+}
 
 export function BookForm({ players }: BookFormProps) {
+  const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState('');
+  const [selectedBookId, setSelectedBookId] = useState('');
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [category, setCategory] = useState('');
@@ -30,13 +34,60 @@ export function BookForm({ players }: BookFormProps) {
   const [notesLink, setNotesLink] = useState('');
   const [summaryNotes, setSummaryNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBooks, setIsLoadingBooks] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
   const calculatedPoints = Math.floor(parseInt(pagesRead || '0') / 10);
 
+  // Fetch books from library on mount
+  useEffect(() => {
+    async function fetchLibraryBooks() {
+      if (!isSupabaseConfigured()) {
+        setIsLoadingBooks(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('books_library')
+          .select('id, name, author, category, total_pages')
+          .order('name');
+
+        if (error) throw error;
+        setLibraryBooks(data || []);
+      } catch (err) {
+        console.error('Failed to fetch library books:', err);
+      } finally {
+        setIsLoadingBooks(false);
+      }
+    }
+
+    fetchLibraryBooks();
+  }, []);
+
+  // Auto-fill when a book is selected
+  const handleBookSelect = (bookId: string) => {
+    setSelectedBookId(bookId);
+    
+    if (bookId) {
+      const book = libraryBooks.find(b => b.id === bookId);
+      if (book) {
+        setTitle(book.name);
+        setAuthor(book.author || '');
+        setCategory(book.category || '');
+        setTotalPages(book.total_pages ? String(book.total_pages) : '');
+      }
+    } else {
+      setTitle('');
+      setAuthor('');
+      setCategory('');
+      setTotalPages('');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedPlayer || !title || !category || !totalPages || !pagesRead) return;
+    if (!selectedPlayer || !selectedBookId || !totalPages || !pagesRead) return;
 
     setIsSubmitting(true);
     setMessage(null);
@@ -59,7 +110,7 @@ export function BookForm({ players }: BookFormProps) {
             cycle_id: cycle.id,
             title,
             author: author || null,
-            category,
+            category: category || null,
             total_pages: parseInt(totalPages),
             pages_read: parseInt(pagesRead),
             notes_link: notesLink || null,
@@ -75,6 +126,7 @@ export function BookForm({ players }: BookFormProps) {
       
       // Reset form
       setSelectedPlayer('');
+      setSelectedBookId('');
       setTitle('');
       setAuthor('');
       setCategory('');
@@ -106,7 +158,7 @@ export function BookForm({ players }: BookFormProps) {
               Book Reading Points
             </h2>
             <p className="text-sm text-gray-400 mt-1">
-              +1 point per 10 pages read • Register books with Mr. Naggar first
+              +1 point per 10 pages read • Select from library
             </p>
           </div>
           {calculatedPoints > 0 && (
@@ -125,9 +177,8 @@ export function BookForm({ players }: BookFormProps) {
           <div className="text-sm text-gray-300">
             <p className="font-medium text-white mb-1">How It Works:</p>
             <ul className="space-y-1 text-gray-400">
-              <li>• Choose a book from: Software, Management, Business, or Soft Skills</li>
-              <li>• Register your book with Mr. Naggar first</li>
-              <li>• Write summary notes to demonstrate understanding</li>
+              <li>• Select a book from the library (added via Books Library tab)</li>
+              <li>• Enter the total pages and pages you've read</li>
               <li>• Earn 1 point per 10 pages (introductions don't count)</li>
             </ul>
           </div>
@@ -155,143 +206,132 @@ export function BookForm({ players }: BookFormProps) {
         </select>
       </div>
 
-      {/* Book Details */}
+      {/* Book Selection from Library */}
       {selectedPlayer && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           className="cyber-card p-6 space-y-4"
         >
-          {/* Category Selection */}
+          {/* Book Dropdown */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-3">
-              Book Category
+              Select Book from Library *
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {BOOK_CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(cat.id)}
-                  className={`
-                    p-3 rounded-lg border text-center transition-all
-                    ${category === cat.id
-                      ? 'bg-neon-blue/20 border-neon-blue text-white'
-                      : 'bg-cyber-darker border-gray-700 text-gray-400 hover:border-gray-500'
-                    }
-                  `}
-                >
-                  <span className="text-xl block mb-1">{cat.emoji}</span>
-                  <span className="text-sm font-medium">{cat.name}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Book Title & Author */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Book Title *
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Clean Code"
+            {isLoadingBooks ? (
+              <div className="flex items-center gap-2 text-gray-400">
+                <div className="w-4 h-4 border-2 border-neon-blue border-t-transparent rounded-full animate-spin" />
+                Loading books...
+              </div>
+            ) : libraryBooks.length === 0 ? (
+              <div className="p-4 bg-danger/10 border border-danger/30 rounded-lg text-danger text-sm">
+                No books in library. Add books via the "Books Library" tab first.
+              </div>
+            ) : (
+              <select
+                value={selectedBookId}
+                onChange={(e) => handleBookSelect(e.target.value)}
                 className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
                          text-white focus:border-neon-blue focus:outline-none"
                 required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Author
-              </label>
-              <input
-                type="text"
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                placeholder="e.g., Robert C. Martin"
-                className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
-                         text-white focus:border-neon-blue focus:outline-none"
-              />
-            </div>
+              >
+                <option value="">Choose a book...</option>
+                {libraryBooks.map((book) => (
+                  <option key={book.id} value={book.id}>
+                    {book.name} {book.author ? `- ${book.author}` : ''}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
-          {/* Pages */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Total Pages *
-              </label>
-              <input
-                type="number"
-                value={totalPages}
-                onChange={(e) => setTotalPages(e.target.value)}
-                placeholder="e.g., 464"
-                min="1"
-                className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
-                         text-white focus:border-neon-blue focus:outline-none"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Pages Read (excluding intro) *
-              </label>
-              <input
-                type="number"
-                value={pagesRead}
-                onChange={(e) => setPagesRead(e.target.value)}
-                placeholder="e.g., 150"
-                min="0"
-                max={totalPages || undefined}
-                className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
-                         text-white focus:border-neon-blue focus:outline-none"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Points Preview */}
-          {parseInt(pagesRead || '0') > 0 && (
-            <div className="p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30 text-center">
-              <span className="text-neon-blue font-medium">
-                📖 {pagesRead} pages ÷ 10 = <span className="text-2xl font-bold">+{calculatedPoints}</span> points
-              </span>
+          {/* Auto-filled Info (Read-only display) */}
+          {selectedBookId && (
+            <div className="p-3 bg-cyber-darker/50 rounded-lg border border-gray-700">
+              <p className="text-sm text-gray-400 mb-1">Selected Book:</p>
+              <p className="text-white font-medium">{title}</p>
+              {author && <p className="text-sm text-gray-400">by {author}</p>}
+              {category && <p className="text-xs text-neon-blue mt-1 capitalize">{category.replace('_', ' ')}</p>}
             </div>
           )}
 
-          {/* Notes Link */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Notes Link (URL)
-            </label>
-            <input
-              type="url"
-              value={notesLink}
-              onChange={(e) => setNotesLink(e.target.value)}
-              placeholder="https://...your study notes"
-              className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
-                       text-white focus:border-neon-blue focus:outline-none"
-            />
-          </div>
+          {/* Pages - User Input */}
+          {selectedBookId && (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Total Pages *
+                  </label>
+                  <input
+                    type="number"
+                    value={totalPages}
+                    onChange={(e) => setTotalPages(e.target.value)}
+                    placeholder="e.g., 464"
+                    min="1"
+                    className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                             text-white focus:border-neon-blue focus:outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Pages Read (excluding intro) *
+                  </label>
+                  <input
+                    type="number"
+                    value={pagesRead}
+                    onChange={(e) => setPagesRead(e.target.value)}
+                    placeholder="e.g., 150"
+                    min="0"
+                    max={totalPages || undefined}
+                    className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                             text-white focus:border-neon-blue focus:outline-none"
+                    required
+                  />
+                </div>
+              </div>
 
-          {/* Summary Notes */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Summary Notes
-            </label>
-            <textarea
-              value={summaryNotes}
-              onChange={(e) => setSummaryNotes(e.target.value)}
-              placeholder="Key learnings and takeaways from the book..."
-              rows={3}
-              className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
-                       text-white focus:border-neon-blue focus:outline-none resize-none"
-            />
-          </div>
+              {/* Points Preview */}
+              {parseInt(pagesRead || '0') > 0 && (
+                <div className="p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30 text-center">
+                  <span className="text-neon-blue font-medium">
+                    📖 {pagesRead} pages ÷ 10 = <span className="text-2xl font-bold">+{calculatedPoints}</span> points
+                  </span>
+                </div>
+              )}
+
+              {/* Notes Link */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Notes Link (URL)
+                </label>
+                <input
+                  type="text"
+                  value={notesLink}
+                  onChange={(e) => setNotesLink(e.target.value)}
+                  placeholder="https://...your study notes"
+                  className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                           text-white focus:border-neon-blue focus:outline-none"
+                />
+              </div>
+
+              {/* Summary Notes */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Summary Notes
+                </label>
+                <textarea
+                  value={summaryNotes}
+                  onChange={(e) => setSummaryNotes(e.target.value)}
+                  placeholder="Key learnings and takeaways from the book..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
+                           text-white focus:border-neon-blue focus:outline-none resize-none"
+                />
+              </div>
+            </>
+          )}
         </motion.div>
       )}
 
@@ -305,7 +345,7 @@ export function BookForm({ players }: BookFormProps) {
         <div className="flex-1" />
         <button
           type="submit"
-          disabled={!selectedPlayer || !title || !category || !totalPages || !pagesRead || isSubmitting}
+          disabled={!selectedPlayer || !selectedBookId || !totalPages || !pagesRead || isSubmitting}
           className="btn-primary flex items-center gap-2 disabled:opacity-50"
         >
           {isSubmitting ? (

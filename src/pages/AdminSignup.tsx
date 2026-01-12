@@ -1,14 +1,14 @@
 /**
- * Signup Page
- * Create new player account
+ * Admin Signup Page
+ * Create new admin account
  */
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { UserPlus, Mail, Lock, User } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Shield } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function Signup() {
+export default function AdminSignup() {
   const navigate = useNavigate();
   const { signUp, isAuthenticated, playerData, error: authError, isLoading } = useAuth();
   
@@ -21,7 +21,7 @@ export default function Signup() {
   // Auto-redirect after successful signup
   useEffect(() => {
     if (isAuthenticated && playerData) {
-      navigate('/');
+      navigate('/admin/dashboard');
     }
   }, [isAuthenticated, playerData, navigate]);
 
@@ -40,7 +40,8 @@ export default function Signup() {
       return;
     }
 
-    const success = await signUp(name, email, password);
+    // Call signUp with isAdmin = true
+    const success = await signUp(name, email, password, true);
     if (!success) {
       setError(authError || 'Signup failed');
     }
@@ -52,19 +53,17 @@ export default function Signup() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="cyber-card p-8 max-w-md w-full"
+        className="cyber-card p-8 max-w-md w-full border-neon-blue/50"
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <img
-            src="/incrypt-logo.jpg"
-            alt="Incrypt Solutions"
-            className="h-16 w-auto mx-auto rounded-lg shadow-lg shadow-neon-blue/20 mb-4"
-          />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-neon-blue/20 mb-4">
+            <Shield className="w-8 h-8 text-neon-blue" />
+          </div>
           <h1 className="font-display text-3xl font-bold neon-text mb-2">
-            Join Incrypt Arena
+            Create Admin
           </h1>
-          <p className="text-gray-400">Create your player account</p>
+          <p className="text-gray-400">Create your admin account</p>
         </div>
 
         {/* Signup Form */}
@@ -81,7 +80,7 @@ export default function Signup() {
               className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none"
               required
               disabled={isLoading}
-              placeholder="John Doe"
+              placeholder="Admin Name"
             />
           </div>
 
@@ -97,7 +96,7 @@ export default function Signup() {
               className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none"
               required
               disabled={isLoading}
-              placeholder="your.email@incrypt.com"
+              placeholder="admin@incrypt.com"
             />
           </div>
 
@@ -151,7 +150,7 @@ export default function Signup() {
             ) : (
               <>
                 <UserPlus className="w-5 h-5" />
-                <span>Create Account</span>
+                <span>Create Admin Account</span>
               </>
             )}
           </button>
@@ -161,8 +160,8 @@ export default function Signup() {
         <div className="mt-6 text-center">
           <p className="text-gray-400 text-sm">
             Already have an account?{' '}
-            <Link to="/login" className="text-neon-blue hover:underline">
-              Sign in
+            <Link to="/admin" className="text-neon-blue hover:underline">
+              Admin Login
             </Link>
           </p>
         </div>

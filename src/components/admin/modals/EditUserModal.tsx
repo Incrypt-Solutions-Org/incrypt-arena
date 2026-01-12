@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../../lib/supabase';
+import { db } from '../../../lib/supabaseApi';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface UserRecord {
   id: string;
@@ -21,6 +22,7 @@ interface EditUserModalProps {
 }
 
 export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModalProps) {
+  const { session } = useAuth();
   const [email, setEmail] = useState('');
   const [farAway, setFarAway] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,8 +40,8 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
 
     setIsSubmitting(true);
     try {
-      if (isSupabaseConfigured()) {
-        await supabase.from('players').update({ email: email.trim(), far_away: farAway }).eq('id', user.id);
+      if (db.isConfigured()) {
+        await db.update('players', { email: email.trim(), far_away: farAway }, { 'id': `eq.${user.id}` }, { authToken: session?.access_token });
       }
       onSuccess();
       onClose();
@@ -78,9 +80,7 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
                         <MapPin className="w-4 h-4 text-neon-blue" />
                         <span className="font-medium text-white">Lives Far Away</span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        Apply 2× multiplier for attendance and early bird points due to long commute
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">Apply 2× multiplier for attendance and early bird points due to long commute</p>
                     </div>
                   </label>
                 </div>

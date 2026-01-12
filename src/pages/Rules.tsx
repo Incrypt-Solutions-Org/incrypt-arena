@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Trophy, Calendar, GraduationCap, PenTool, Presentation, Lightbulb, AlertTriangle } from 'lucide-react';
 import { POINTS } from '../types';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { db } from '../lib/supabaseApi';
 
 /**
  * Scoring categories with their rules
@@ -68,7 +68,7 @@ const SCORING_RULES = [
     color: 'text-orange-400',
     items: [
       { label: 'Activity Attendance', points: POINTS.ACTIVITY_ATTENDANCE, description: 'Just by attending any activity' },
-      { label: 'Top Performer', points: POINTS.ACTIVITY_TOP_PERFORMER, description: 'Win any team activity' },
+      { label: 'Top Performer Bonus', points: null, description: 'Custom bonus set by admin for top performers' },
       { label: 'Trip Participation', points: POINTS.TRIP, description: 'Seasonal team trip' },
     ],
     note: 'One-time Double Points mode available per activity',
@@ -111,9 +111,11 @@ export function RulesPage() {
 
   const loadBooks = async () => {
     setBooksLoading(true);
-    if (isSupabaseConfigured()) {
+    if (db.isConfigured()) {
       try {
-        const { data } = await supabase.from('books_library').select('*').order('category', { ascending: true }).order('name', { ascending: true });
+        const { data } = await db.select<Book[]>('books_library', {
+          order: 'category.asc,name.asc',
+        });
         if (data) setBooks(data);
       } catch (err) {
         console.error('Failed to load books:', err);

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { LogIn, Mail, Lock, AlertCircle, Info } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -36,11 +36,8 @@ export default function Login() {
     try {
       const success = await signIn(email, password);
       if (success) {
-        // Wait a moment for playerData to load
-        setTimeout(() => {
-          setIsSubmitting(false);
-          // Redirect happens in useEffect above
-        }, 500);
+        // Redirect happens immediately in useEffect above when auth state updates
+        setIsSubmitting(false);
       } else {
         setError(authError || 'Login failed. Please check your credentials.');
         setIsSubmitting(false);
@@ -144,12 +141,18 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Signup Link */}
-        <div className="mt-6 text-center">
+        {/* Signup Links */}
+        <div className="mt-6 text-center space-y-2">
           <p className="text-gray-400 text-sm">
             Don't have an account?{' '}
             <Link to="/signup" className="text-neon-blue hover:underline">
-              Sign up
+              Sign up as Player
+            </Link>
+          </p>
+          <p className="text-gray-500 text-xs">
+            or{' '}
+            <Link to="/admin/signup" className="text-neon-purple hover:underline">
+              Create Admin Account
             </Link>
           </p>
         </div>

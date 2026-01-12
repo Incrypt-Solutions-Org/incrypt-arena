@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Course {
   id: string;
@@ -23,6 +24,7 @@ interface EditCourseModalProps {
 }
 
 export function EditCourseModal({ isOpen, course, onClose, onSuccess }: EditCourseModalProps) {
+  const { session } = useAuth();
   const [name, setName] = useState('');
   const [courseUrl, setCourseUrl] = useState('');
   const [notesUrl, setNotesUrl] = useState('');
@@ -57,14 +59,16 @@ export function EditCourseModal({ isOpen, course, onClose, onSuccess }: EditCour
     setError(null);
 
     try {
-      if (isSupabaseConfigured()) {
-        await supabase.from('courses').update({
+      if (db.isConfigured()) {
+        const { error: updateError } = await db.update('courses', {
           name: name.trim(),
           course_url: courseUrl.trim() || null,
           notes_link: notesUrl.trim() || null,
           total_hours: parseFloat(hours),
           completion_percent: completionNum,
-        }).eq('id', course.id);
+        }, { 'id': `eq.${course.id}` }, { authToken: session?.access_token });
+
+        if (updateError) throw new Error(updateError.message);
       }
 
       onSuccess();
@@ -95,11 +99,11 @@ export function EditCourseModal({ isOpen, course, onClose, onSuccess }: EditCour
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Course URL</label>
-                  <input type="url" value={courseUrl} onChange={(e) => setCourseUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
+                  <input type="text" value={courseUrl} onChange={(e) => setCourseUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Notes URL</label>
-                  <input type="url" value={notesUrl} onChange={(e) => setNotesUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
+                  <input type="text" value={notesUrl} onChange={(e) => setNotesUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" disabled={isSubmitting} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Number of Hours *</label>

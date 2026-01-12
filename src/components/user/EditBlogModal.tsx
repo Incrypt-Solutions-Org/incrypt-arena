@@ -4,7 +4,8 @@
 import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase, isSupabaseConfigured } from '../../lib/supabase';
+import { db } from '../../lib/supabaseApi';
+import { useAuth } from '../../hooks/useAuth';
 
 interface Blog {
   id: string;
@@ -23,6 +24,7 @@ interface EditBlogModalProps {
 }
 
 export function EditBlogModal({ isOpen, blog, onClose, onSuccess, userId }: EditBlogModalProps) {
+  const { session } = useAuth();
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,26 +45,32 @@ export function EditBlogModal({ isOpen, blog, onClose, onSuccess, userId }: Edit
     setError(null);
 
     try {
-      if (isSupabaseConfigured()) {
+      if (db.isConfigured()) {
         // Check for duplicate URL (excluding current blog)
-        const { data: existing } = await supabase.from('blogs').select('id').eq('player_id', userId).eq('url', url.trim()).neq('id', blog.id);
+        const { data: existing } = await db.select<{ id: string }[]>('blogs', {
+          columns: 'id',
+          filters: { 'player_id': `eq.${userId}`, 'url': `eq.${url.trim()}`, 'id': `neq.${blog.id}` },
+        });
         if (existing && existing.length > 0) {
           setError('You have already submitted this blog URL');
           setIsSubmitting(false);
           return;
         }
 
-        await supabase.from('blogs').update({
+        const { error: updateError } = await db.update('blogs', {
           name: name.trim(),
           url: url.trim(),
-        }).eq('id', blog.id);
+        }, { 'id': `eq.${blog.id}` }, { authToken: session?.access_token });
+
+        if (updateError) throw new Error(updateError.message);
       }
 
       onSuccess();
       onClose();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update blog:', err);
-      if (err.message?.includes('duplicate') || err.code === '23505') {
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('duplicate') || message.includes('23505')) {
         setError('This blog URL already exists in the system');
       } else {
         setError('Failed to update blog. Please try again.');
@@ -93,7 +101,7 @@ export function EditBlogModal({ isOpen, blog, onClose, onSuccess, userId }: Edit
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">Blog URL *</label>
-                  <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" required disabled={isSubmitting} />
+                  <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" required disabled={isSubmitting} />
                 </div>
                 {error && <div className="p-3 bg-danger/20 border border-danger/50 rounded-lg text-danger text-sm">{error}</div>}
                 <div className="flex gap-3 pt-4">

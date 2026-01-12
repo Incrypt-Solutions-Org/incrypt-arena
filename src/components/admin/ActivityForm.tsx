@@ -17,7 +17,7 @@ interface ActivityFormProps {
 export function ActivityForm({ players }: ActivityFormProps) {
   const [selectedActivity, setSelectedActivity] = useState('');
   const [attendees, setAttendees] = useState<Set<string>>(new Set());
-  const [topPerformer, setTopPerformer] = useState<string>('');
+  const [topPerformers, setTopPerformers] = useState<Map<string, number>>(new Map());
   const [doublePointsPlayer, setDoublePointsPlayer] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -27,8 +27,10 @@ export function ActivityForm({ players }: ActivityFormProps) {
     if (newSet.has(playerId)) {
       newSet.delete(playerId);
       // Clear top performer and double points if they're removed
-      if (topPerformer === playerId) {
-        setTopPerformer('');
+      if (topPerformers.has(playerId)) {
+        const newMap = new Map(topPerformers);
+        newMap.delete(playerId);
+        setTopPerformers(newMap);
       }
       if (doublePointsPlayer === playerId) {
         setDoublePointsPlayer('');
@@ -39,14 +41,30 @@ export function ActivityForm({ players }: ActivityFormProps) {
     setAttendees(newSet);
   };
 
+  const toggleTopPerformer = (playerId: string) => {
+    const newMap = new Map(topPerformers);
+    if (newMap.has(playerId)) {
+      newMap.delete(playerId);
+    } else {
+      newMap.set(playerId, 20); // Default bonus of 20
+    }
+    setTopPerformers(newMap);
+  };
+
+  const updateTopPerformerBonus = (playerId: string, bonus: number) => {
+    const newMap = new Map(topPerformers);
+    newMap.set(playerId, bonus);
+    setTopPerformers(newMap);
+  };
+
   const toggleDoublePoints = (playerId: string) => {
     setDoublePointsPlayer(doublePointsPlayer === playerId ? '' : playerId);
   };
 
   const calculatePlayerPoints = (playerId: string): number => {
     let points = POINTS.ACTIVITY_ATTENDANCE;
-    if (playerId === topPerformer) {
-      points += POINTS.ACTIVITY_TOP_PERFORMER;
+    if (topPerformers.has(playerId)) {
+      points += topPerformers.get(playerId) || 0;
     }
     if (playerId === doublePointsPlayer) {
       points *= 2; // Double the total points
@@ -106,7 +124,7 @@ export function ActivityForm({ players }: ActivityFormProps) {
         const participations = Array.from(attendees).map(playerId => ({
           activity_id: activity.id,
           player_id: playerId,
-          is_top_performer: playerId === topPerformer,
+          is_top_performer: topPerformers.has(playerId),
           double_points_used: playerId === doublePointsPlayer,
           points: calculatePlayerPoints(playerId),
         }));
@@ -128,7 +146,7 @@ export function ActivityForm({ players }: ActivityFormProps) {
       // Reset form
       setSelectedActivity('');
       setAttendees(new Set());
-      setTopPerformer('');
+      setTopPerformers(new Map());
       setDoublePointsPlayer('');
     } catch (err) {
       console.error('Failed to log activity:', err);
@@ -154,7 +172,7 @@ export function ActivityForm({ players }: ActivityFormProps) {
               Activity Points
             </h2>
             <p className="text-sm text-gray-400 mt-1">
-              +{POINTS.ACTIVITY_ATTENDANCE} pts attendance • +{POINTS.ACTIVITY_TOP_PERFORMER} top performer • ⚡ 2× one-time bonus
+              +{POINTS.ACTIVITY_ATTENDANCE} pts attendance • Top performer: custom bonus • ⚡ 2× one-time bonus
             </p>
           </div>
         </div>
@@ -206,7 +224,7 @@ export function ActivityForm({ players }: ActivityFormProps) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {players.map((player) => {
               const isAttending = attendees.has(player.player_id);
-              const isTop = topPerformer === player.player_id;
+              const isTop = topPerformers.has(player.player_id);
               const isDouble = doublePointsPlayer === player.player_id;
               const playerPoints = isAttending ? calculatePlayerPoints(player.player_id) : 0;
 
@@ -243,7 +261,7 @@ export function ActivityForm({ players }: ActivityFormProps) {
                       {/* Top Performer Toggle */}
                       <button
                         type="button"
-                        onClick={() => setTopPerformer(isTop ? '' : player.player_id)}
+                        onClick={() => toggleTopPerformer(player.player_id)}
                         className={`
                           p-1 rounded-full transition-all
                           ${isTop
@@ -280,11 +298,28 @@ export function ActivityForm({ players }: ActivityFormProps) {
 
           {/* Status Messages */}
           <div className="mt-4 space-y-2">
-            {topPerformer && (
-              <div className="p-3 bg-gold/10 rounded-lg border border-gold/30 text-center">
-                <span className="text-gold font-medium">
-                  ⭐ {players.find(p => p.player_id === topPerformer)?.player_name} is Top Performer (+{POINTS.ACTIVITY_TOP_PERFORMER} bonus)
-                </span>
+            {topPerformers.size > 0 && (
+              <div className="p-4 bg-gold/10 rounded-lg border border-gold/30 space-y-3">
+                <span className="text-gold font-medium block">⭐ Top Performers</span>
+                {Array.from(topPerformers.entries()).map(([playerId, bonus]) => {
+                  const player = players.find(p => p.player_id === playerId);
+                  return (
+                    <div key={playerId} className="flex items-center justify-between gap-4 bg-cyber-darker/50 p-2 rounded">
+                      <span className="text-white">{player?.player_name}</span>
+                      <div className="flex items-center gap-2">
+                        <label className="text-sm text-gray-400">Bonus:</label>
+                        <input
+                          type="number"
+                          value={bonus}
+                          onChange={(e) => updateTopPerformerBonus(playerId, parseInt(e.target.value) || 0)}
+                          min="1"
+                          className="w-20 px-2 py-1 bg-cyber-darker border border-gold/50 rounded text-gold text-center font-bold focus:outline-none focus:border-gold"
+                        />
+                        <span className="text-gray-400">pts</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
             {doublePointsPlayer && (
