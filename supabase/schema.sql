@@ -152,6 +152,7 @@ CREATE TABLE books_library (
   name VARCHAR(255) NOT NULL,
   author VARCHAR(255),
   category VARCHAR(100),
+  total_pages INTEGER,
   points_per_10_pages INTEGER DEFAULT 1,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

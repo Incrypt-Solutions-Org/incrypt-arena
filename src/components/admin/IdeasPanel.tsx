@@ -75,10 +75,10 @@ export function IdeasPanel({ onOpenAddModal, onOpenEditModal }: IdeasPanelProps)
 
     if (db.isConfigured()) {
       try {
-        await db.update('ideas', { 'id': `eq.${ideaId}` }, {
+        await db.update('ideas', {
           verified: true,
           points: pointsValue,
-        }, { authToken: session?.access_token });
+        }, { 'id': `eq.${ideaId}` }, { authToken: session?.access_token });
         
         // Update local state
         setIdeas(ideas.map(i => i.id === ideaId ? { ...i, verified: true, points: pointsValue } : i));
