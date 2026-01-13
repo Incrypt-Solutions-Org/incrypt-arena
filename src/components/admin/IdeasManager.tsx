@@ -12,8 +12,10 @@ interface IdeaRecord {
   player_id: string;
   title: string;
   description: string | null;
+  idea_type: string | null;
   points: number;
-  date: string;
+  verified: boolean;
+  created_at: string;
   player_name: string;
 }
 

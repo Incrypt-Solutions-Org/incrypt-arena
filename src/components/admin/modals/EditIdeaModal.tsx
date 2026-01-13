@@ -5,14 +5,17 @@ import { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../../lib/supabaseApi';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface IdeaRecord {
   id: string;
+  player_id: string;
   title: string;
   description: string | null;
+  idea_type: string | null;
   points: number;
-  date: string;
+  verified: boolean;
+  created_at: string;
   player_name: string;
 }
 
@@ -36,7 +39,7 @@ export function EditIdeaModal({ isOpen, idea, onClose, onSuccess }: EditIdeaModa
       setTitle(idea.title);
       setDescription(idea.description || '');
       setPoints(idea.points.toString());
-      setDate(idea.date);
+      setDate(idea.created_at);
     }
   }, [idea]);
 
