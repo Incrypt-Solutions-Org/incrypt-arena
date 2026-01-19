@@ -15,7 +15,7 @@ const TEAM_TABS = [
   { id: 'blogs', label: 'Blogs', icon: PenTool },
   { id: 'books', label: 'Books', icon: BookOpen },
   { id: 'presentations', label: 'Presentations', icon: PresentationIcon },
-  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
+  { id: 'ideas', label: 'Ideas & Tools', icon: Lightbulb },
 ] as const;
 
 type TeamTabId = typeof TEAM_TABS[number]['id'];

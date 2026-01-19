@@ -11,6 +11,7 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface AttendanceFormProps {
   players: LeaderboardEntry[];
+  onSuccess?: () => void;
 }
 
 function getLastWednesday(): Date {
@@ -31,7 +32,7 @@ function formatDisplayDate(date: Date): string {
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export function AttendanceForm({ players }: AttendanceFormProps) {
+export function AttendanceForm({ players, onSuccess }: AttendanceFormProps) {
   const { session } = useAuth();
   const [selectedPlayers, setSelectedPlayers] = useState<Set<string>>(new Set());
   const [earlyBirdPlayers, setEarlyBirdPlayers] = useState<Set<string>>(new Set());
@@ -121,6 +122,7 @@ export function AttendanceForm({ players }: AttendanceFormProps) {
       setSuccessMessage(`✓ Logged attendance for ${count} player${count > 1 ? 's' : ''}` + (earlyCount > 0 ? ` (${earlyCount} Early Bird)` : ''));
       setSelectedPlayers(new Set());
       setEarlyBirdPlayers(new Set());
+      onSuccess?.();
     } catch (err) {
       console.error('Failed to log attendance:', err);
       setSuccessMessage('❌ Failed to log attendance');

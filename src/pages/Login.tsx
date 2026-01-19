@@ -57,11 +57,13 @@ export default function Login() {
       >
         {/* Logo */}
         <div className="text-center mb-8">
-          <img
-            src="/incrypt-logo.jpg"
-            alt="Incrypt Solutions"
-            className="h-16 w-auto mx-auto rounded-lg shadow-lg shadow-neon-blue/20 mb-4"
-          />
+          <Link to="/" className="inline-block">
+            <img
+              src="/incrypt-logo.jpg"
+              alt="Incrypt Solutions"
+              className="h-16 w-auto mx-auto rounded-lg shadow-lg shadow-neon-blue/20 mb-4 hover:shadow-neon-blue/40 transition-shadow cursor-pointer"
+            />
+          </Link>
           <h1 className="font-display text-3xl font-bold neon-text mb-2">
             Incrypt Arena
           </h1>

@@ -12,6 +12,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 
 interface BookFormProps {
   players: LeaderboardEntry[];
+  onSuccess?: () => void;
 }
 
 interface LibraryBook {
@@ -22,7 +23,7 @@ interface LibraryBook {
   total_pages: number | null;
 }
 
-export function BookForm({ players }: BookFormProps) {
+export function BookForm({ players, onSuccess }: BookFormProps) {
   const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [selectedBookId, setSelectedBookId] = useState('');
@@ -134,6 +135,7 @@ export function BookForm({ players }: BookFormProps) {
       setPagesRead('');
       setNotesLink('');
       setSummaryNotes('');
+      onSuccess?.();
     } catch (err) {
       console.error('Failed to log book:', err);
       setMessage('❌ Failed to log book');

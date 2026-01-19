@@ -1,11 +1,14 @@
 /**
  * BooksPanel - Admin panel to view, edit, and delete player book records
+ * Also includes the Add Book form (merged for fewer tabs)
  */
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { BookOpen, Edit, Trash2, Check, X, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Edit, Trash2, Check, X, ExternalLink, Plus, ChevronUp } from 'lucide-react';
 import { db } from '../../lib/supabaseApi';
 import { useAuth } from '../../contexts/AuthContext';
+import { BookForm } from './BookForm';
+import type { LeaderboardEntry } from '../../types';
 
 interface BookRecord {
   id: string;
@@ -23,7 +26,11 @@ interface BookRecord {
   players?: { name: string };
 }
 
-export function BooksPanel() {
+interface BooksPanelProps {
+  players: LeaderboardEntry[];
+}
+
+export function BooksPanel({ players }: BooksPanelProps) {
   const { session } = useAuth();
   const [books, setBooks] = useState<BookRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +38,7 @@ export function BooksPanel() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPagesRead, setEditPagesRead] = useState('0');
   const [editVerified, setEditVerified] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const loadBooks = async () => {
     setIsLoading(true);
@@ -109,15 +117,45 @@ export function BooksPanel() {
     return cat ? labels[cat] || cat : '-';
   };
 
+  const handleFormSuccess = () => {
+    loadBooks();
+    setShowAddForm(false);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-neon-blue" />
-          Books Management
-        </h2>
-        <p className="text-sm text-gray-400 mt-1">View, verify, and manage player book records</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-neon-blue" />
+            Books Management
+          </h2>
+          <p className="text-sm text-gray-400 mt-1">View, verify, and manage player book records</p>
+        </div>
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className={`btn-primary flex items-center gap-2 ${showAddForm ? 'bg-gray-600 hover:bg-gray-500' : ''}`}
+        >
+          {showAddForm ? <ChevronUp className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+          <span>{showAddForm ? 'Hide Form' : 'Add Book'}</span>
+        </button>
       </div>
+
+      {/* Collapsible Add Form */}
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="border border-neon-blue/30 rounded-lg p-4 bg-cyber-darker/50">
+              <BookForm players={players} onSuccess={handleFormSuccess} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="cyber-card overflow-hidden">
         {isLoading ? (

@@ -12,9 +12,10 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface CourseFormProps {
   players: LeaderboardEntry[];
+  onSuccess?: () => void;
 }
 
-export function CourseForm({ players }: CourseFormProps) {
+export function CourseForm({ players, onSuccess }: CourseFormProps) {
   const { session } = useAuth();
   const [selectedPlayer, setSelectedPlayer] = useState('');
   const [courseName, setCourseName] = useState('');
@@ -68,6 +69,7 @@ export function CourseForm({ players }: CourseFormProps) {
       setCompletionPercent('');
       setCourseUrl('');
       setNotesLink('');
+      onSuccess?.();
     } catch (err) {
       console.error('Failed to log course:', err);
       setMessage('❌ Failed to log course');

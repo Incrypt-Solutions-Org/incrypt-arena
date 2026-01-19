@@ -20,7 +20,7 @@ const PERFORMANCE_TABS = [
   { id: 'courses', label: 'Courses', icon: GraduationCap },
   { id: 'books', label: 'Books', icon: BookOpen },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
-  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
+  { id: 'ideas', label: 'Ideas & Tools', icon: Lightbulb },
   { id: 'penalties', label: 'Penalties', icon: AlertTriangle },
   { id: 'rewards', label: 'Rewards', icon: Award },
 ] as const;

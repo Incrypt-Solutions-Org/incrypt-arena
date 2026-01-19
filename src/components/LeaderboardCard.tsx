@@ -22,7 +22,7 @@ const POINT_CATEGORIES = [
   { key: 'book_points', label: 'Books', icon: '📖' },
   { key: 'blog_points', label: 'Blogs', icon: '✍️' },
   { key: 'presentation_points', label: 'Presentations', icon: '🎤' },
-  { key: 'idea_points', label: 'Ideas', icon: '💡' },
+  { key: 'idea_points', label: 'Ideas & Tools', icon: '💡' },
   { key: 'penalty_points', label: 'Penalties', icon: '⚠️' },
 ] as const;
 
