@@ -156,17 +156,22 @@ export function EditBookModal({ isOpen, book, onClose, onSuccess }: EditBookModa
                 {/* Category */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Category
+                    Category *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    placeholder="e.g., Software, Business, Management"
                     className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg
                              text-white focus:border-neon-blue focus:outline-none"
+                    required
                     disabled={isSubmitting}
-                  />
+                  >
+                    <option value="">Select a category</option>
+                    <option value="software">Software</option>
+                    <option value="management">Management</option>
+                    <option value="business">Business</option>
+                    <option value="soft_skills">Soft Skills</option>
+                  </select>
                 </div>
 
                 {/* Total Pages */}

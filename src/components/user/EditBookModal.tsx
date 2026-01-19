@@ -45,7 +45,6 @@ export function EditBookModal({ isOpen, book, onClose, onSuccess }: EditBookModa
       if (db.isConfigured()) {
         const { error } = await db.update('books', {
           pages_read: parseFloat(pagesRead),
-          total_pages: parseFloat(pagesRead),
           notes_link: notesLink.trim() || null,
         }, { 'id': `eq.${book.id}` }, { authToken: session?.access_token });
 

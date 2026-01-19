@@ -36,6 +36,7 @@ export default function MyAchievements() {
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false);
 
   const [attendance, setAttendance] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
@@ -60,6 +61,23 @@ export default function MyAchievements() {
       if (data) setAttendance(data as any[]);
     } catch (err) {
       console.error('Failed to fetch attendance:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
+  const fetchActivities = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      const { data } = await db.select('activity_participations', {
+        columns: '*,activities:activity_id(name,date,activity_type)',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'created_at.desc',
+      });
+      if (data) setActivities(data as any[]);
+    } catch (err) {
+      console.error('Failed to fetch activities:', err);
     } finally {
       setIsLoading(false);
     }
@@ -136,6 +154,8 @@ export default function MyAchievements() {
   useEffect(() => {
     if (activeTab === 'attendance') {
       fetchAttendance();
+    } else if (activeTab === 'activities') {
+      fetchActivities();
     } else if (activeTab === 'courses') {
       fetchCourses();
     } else if (activeTab === 'books') {
@@ -145,7 +165,7 @@ export default function MyAchievements() {
     } else if (activeTab === 'ideas') {
       fetchIdeas();
     }
-  }, [activeTab, fetchAttendance, fetchCourses, fetchBooks, fetchBlogs, fetchIdeas]);
+  }, [activeTab, fetchAttendance, fetchActivities, fetchCourses, fetchBooks, fetchBlogs, fetchIdeas]);
 
   if (!user || !playerData) {
     return (
@@ -244,7 +264,48 @@ export default function MyAchievements() {
                 )}
               </div>
             )}
-            {activeTab === 'activities' && <div className="text-gray-400">Activities records coming soon...</div>}
+            {activeTab === 'activities' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : activities.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No activities participated in yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Activity</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Type</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Top Performer</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activities.map((record, idx) => (
+                          <motion.tr key={record.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{record.activities?.name || 'Unknown'}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 bg-neon-blue/20 text-neon-blue text-xs rounded">{record.activities?.activity_type || '-'}</span>
+                            </td>
+                            <td className="px-4 py-3 text-center"><span className="text-success font-medium">+{record.points}</span></td>
+                            <td className="px-4 py-3 text-center">
+                              {record.is_top_performer ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-gold/20 text-gold text-xs font-medium">⭐ Yes</span>
+                              ) : (
+                                <span className="text-gray-500">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-gray-300">{record.activities?.date ? new Date(record.activities.date).toLocaleDateString() : '-'}</td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'presentations' && <div className="text-gray-400">Presentations records coming soon...</div>}
             {activeTab === 'courses' && (
               <div className="cyber-card overflow-hidden">

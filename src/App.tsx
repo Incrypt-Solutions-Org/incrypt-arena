@@ -14,7 +14,6 @@ import MyAchievements from './pages/MyAchievements';
 import TeamAchievements from './pages/TeamAchievements';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import AdminSignup from './pages/AdminSignup';
 import { AuthProvider } from './contexts/AuthContext';
 
 export default function App() {
@@ -32,7 +31,6 @@ export default function App() {
             {/* Auth Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/admin/signup" element={<AdminSignup />} />
             
             {/* Public Routes */}
             <Route path="/" element={<LeaderboardPage />} />

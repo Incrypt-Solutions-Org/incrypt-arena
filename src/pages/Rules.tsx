@@ -19,7 +19,6 @@ const SCORING_RULES = [
     items: [
       { label: 'Wednesday Check-in', points: POINTS.ATTENDANCE, description: 'Every Wednesday attendance' },
       { label: 'Early Bird Bonus', points: POINTS.EARLY_BIRD, description: 'Arrive before 11:30 AM' },
-      { label: 'Askora\'s Streak Bonus', points: POINTS.ASKORA_STREAK, description: '2 consecutive Wednesdays' },
       { label: 'Attendance Champion', points: POINTS.ATTENDANCE_CHAMPION, description: 'Highest attendance (end of cycle)' },
     ],
   },

@@ -11,6 +11,7 @@ interface Book {
   id: string;
   name: string;
   category: string | null;
+  total_pages: number | null;
   points_per_10_pages: number;
 }
 
@@ -80,7 +81,7 @@ export function AddBookModal({ isOpen, onClose, onSuccess, userId }: AddBookModa
           player_id: userId,
           cycle_id: cycle.id,
           title: selectedBook.name,
-          total_pages: parseFloat(pagesRead),
+          total_pages: selectedBook.total_pages || parseInt(pagesRead),
           pages_read: parseFloat(pagesRead),
           notes_link: notesLink.trim() || null,
         }, { authToken: session?.access_token });

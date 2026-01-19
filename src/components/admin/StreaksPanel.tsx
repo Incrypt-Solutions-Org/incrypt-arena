@@ -1,17 +1,10 @@
 /**
  * StreaksPanel Component
- * Admin panel for viewing and applying Askora's Streak and Attendance Champion bonuses
+ * Admin panel for viewing Attendance Champion and Double Points info
  */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Crown, Trophy, RefreshCw, Check } from 'lucide-react';
-
-interface StreakInfo {
-  playerId: string;
-  playerName: string;
-  consecutiveWeeks: number;
-  bonusPoints: number;
-}
+import { Zap, Crown, RefreshCw } from 'lucide-react';
 
 interface ChampionInfo {
   playerId: string;
@@ -21,26 +14,20 @@ interface ChampionInfo {
 }
 
 interface StreaksPanelProps {
-  calculateStreaks: () => Promise<StreakInfo[]>;
+  calculateStreaks: () => Promise<any[]>;
   calculateAttendanceChampion: () => Promise<ChampionInfo | null>;
   isLoading: boolean;
 }
 
 export function StreaksPanel({ 
-  calculateStreaks, 
   calculateAttendanceChampion,
 }: StreaksPanelProps) {
-  const [streaks, setStreaks] = useState<StreakInfo[]>([]);
   const [champion, setChampion] = useState<ChampionInfo | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refreshData = async () => {
     setIsRefreshing(true);
-    const [streakData, championData] = await Promise.all([
-      calculateStreaks(),
-      calculateAttendanceChampion(),
-    ]);
-    setStreaks(streakData);
+    const championData = await calculateAttendanceChampion();
     setChampion(championData);
     setIsRefreshing(false);
   };
@@ -56,10 +43,10 @@ export function StreaksPanel({
         <div>
           <h2 className="font-display text-xl font-bold text-white flex items-center gap-2">
             <Zap className="w-5 h-5 text-gold" />
-            Streaks & Bonus Points
+            Bonuses & Awards
           </h2>
           <p className="text-sm text-gray-400 mt-1">
-            View and apply special bonus points for streaks and achievements
+            View and track special bonus points and achievements
           </p>
         </div>
         <button
@@ -70,56 +57,6 @@ export function StreaksPanel({
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
         </button>
-      </div>
-
-      {/* Askora's Streak Section */}
-      <div className="cyber-card p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 rounded-full bg-neon-purple/20">
-            <Trophy className="w-5 h-5 text-neon-purple" />
-          </div>
-          <div>
-            <h3 className="font-display text-lg font-bold text-white">
-              Askora's Special Streak
-            </h3>
-            <p className="text-sm text-gray-400">
-              +1 bonus for every 2 consecutive Wednesday check-ins
-            </p>
-          </div>
-        </div>
-
-        {streaks.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            No active streaks found. Players need 2+ consecutive Wednesdays.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {streaks.map((streak) => (
-              <motion.div
-                key={streak.playerId}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center justify-between p-3 bg-cyber-darker rounded-lg"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🔥</span>
-                  <div>
-                    <span className="font-medium text-white">{streak.playerName}</span>
-                    <p className="text-xs text-gray-400">
-                      {streak.consecutiveWeeks} consecutive weeks
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-neon-purple font-bold">
-                    +{streak.bonusPoints} bonus
-                  </span>
-                  <Check className="w-4 h-4 text-success" />
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Attendance Champion Section */}

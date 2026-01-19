@@ -3,9 +3,9 @@
  * Form for logging activity attendance and awarding points
  * Includes Double Points feature (one-time per player per cycle)
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Trophy, Users, Star, Send, Zap } from 'lucide-react';
+import { Trophy, Users, Star, Send, Zap, Check } from 'lucide-react';
 import type { LeaderboardEntry } from '../../types';
 import { ACTIVITIES, POINTS } from '../../types';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
@@ -21,6 +21,27 @@ export function ActivityForm({ players }: ActivityFormProps) {
   const [doublePointsPlayer, setDoublePointsPlayer] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [usedActivities, setUsedActivities] = useState<Set<string>>(new Set());
+
+  // Fetch already used activities on mount
+  useEffect(() => {
+    async function fetchUsedActivities() {
+      if (isSupabaseConfigured()) {
+        try {
+          const { data } = await supabase
+            .from('activities')
+            .select('activity_type');
+          if (data) {
+            const used = new Set(data.map(a => a.activity_type));
+            setUsedActivities(used);
+          }
+        } catch (err) {
+          console.error('Failed to fetch used activities:', err);
+        }
+      }
+    }
+    fetchUsedActivities();
+  }, []);
 
   const toggleAttendee = (playerId: string) => {
     const newSet = new Set(attendees);
@@ -184,23 +205,35 @@ export function ActivityForm({ players }: ActivityFormProps) {
           Select Activity
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {ACTIVITIES.map((activity) => (
-            <button
-              key={activity.id}
-              type="button"
-              onClick={() => setSelectedActivity(activity.id)}
-              className={`
-                p-4 rounded-lg border text-left transition-all
-                ${selectedActivity === activity.id
-                  ? 'bg-neon-blue/20 border-neon-blue text-white'
-                  : 'bg-cyber-darker border-gray-700 text-gray-400 hover:border-gray-500'
-                }
-              `}
-            >
-              <span className="text-2xl mb-2 block">{activity.emoji}</span>
-              <span className="font-medium text-sm">{activity.name}</span>
-            </button>
-          ))}
+          {ACTIVITIES.map((activity) => {
+            const isUsed = usedActivities.has(activity.id);
+            return (
+              <button
+                key={activity.id}
+                type="button"
+                onClick={() => !isUsed && setSelectedActivity(activity.id)}
+                disabled={isUsed}
+                className={`
+                  p-4 rounded-lg border text-left transition-all relative
+                  ${isUsed
+                    ? 'bg-success/10 border-success/50 opacity-60 cursor-not-allowed'
+                    : selectedActivity === activity.id
+                      ? 'bg-neon-blue/20 border-neon-blue text-white'
+                      : 'bg-cyber-darker border-gray-700 text-gray-400 hover:border-gray-500'
+                  }
+                `}
+              >
+                {isUsed && (
+                  <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-success flex items-center justify-center">
+                    <Check className="w-3 h-3 text-cyber-dark" />
+                  </div>
+                )}
+                <span className="text-2xl mb-2 block">{activity.emoji}</span>
+                <span className="font-medium text-sm">{activity.name}</span>
+                {isUsed && <span className="block text-xs text-success mt-1">Completed</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 

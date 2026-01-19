@@ -1,17 +1,18 @@
 /**
- * EditUserModal - Edit user email and far_away status
+ * EditUserModal - Edit user email, far_away status, and admin privilege
  */
 import { useState, useEffect } from 'react';
-import { X, Save, MapPin } from 'lucide-react';
+import { X, Save, MapPin, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../../lib/supabaseApi';
-import { useAuth } from '../../../hooks/useAuth';
+import { useAuth } from '../../../contexts/AuthContext';
 
 interface UserRecord {
   id: string;
   name: string;
   email: string;
   far_away: boolean;
+  is_admin?: boolean;
 }
 
 interface EditUserModalProps {
@@ -25,12 +26,14 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
   const { session } = useAuth();
   const [email, setEmail] = useState('');
   const [farAway, setFarAway] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (user) {
       setEmail(user.email);
       setFarAway(user.far_away);
+      setIsAdmin(user.is_admin || false);
     }
   }, [user]);
 
@@ -41,7 +44,11 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
     setIsSubmitting(true);
     try {
       if (db.isConfigured()) {
-        await db.update('players', { email: email.trim(), far_away: farAway }, { 'id': `eq.${user.id}` }, { authToken: session?.access_token });
+        await db.update('players', { 
+          email: email.trim(), 
+          far_away: farAway,
+          is_admin: isAdmin 
+        }, { 'id': `eq.${user.id}` }, { authToken: session?.access_token });
       }
       onSuccess();
       onClose();
@@ -72,6 +79,21 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
                   <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-4 py-3 bg-cyber-darker border border-gray-700 rounded-lg text-white focus:border-neon-blue focus:outline-none" required disabled={isSubmitting} />
                 </div>
                 
+                {/* Admin Toggle */}
+                <div className="p-4 bg-neon-purple/10 rounded-lg border border-neon-purple/30">
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" checked={isAdmin} onChange={(e) => setIsAdmin(e.target.checked)} disabled={isSubmitting} className="mt-1 w-4 h-4 rounded border-gray-600 bg-cyber-darker text-neon-purple focus:ring-neon-purple focus:ring-offset-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Shield className="w-4 h-4 text-neon-purple" />
+                        <span className="font-medium text-white">Admin Privileges</span>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Grant full admin access to manage the system</p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Far Away Toggle */}
                 <div className="p-4 bg-neon-blue/10 rounded-lg border border-neon-blue/30">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input type="checkbox" checked={farAway} onChange={(e) => setFarAway(e.target.checked)} disabled={isSubmitting} className="mt-1 w-4 h-4 rounded border-gray-600 bg-cyber-darker text-neon-blue focus:ring-neon-blue focus:ring-offset-0" />

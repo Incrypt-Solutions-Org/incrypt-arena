@@ -4,7 +4,7 @@
  */
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { GraduationCap, BookOpen, PenTool, Presentation as PresentationIcon, Trophy, Calendar, Lightbulb } from 'lucide-react';
+import { GraduationCap, BookOpen, PenTool, Presentation as PresentationIcon, Trophy, Calendar, Lightbulb, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { db } from '../lib/supabaseApi';
 import { ClickableUrl } from '../components/ClickableUrl';
 
@@ -98,6 +98,9 @@ export default function TeamAchievements() {
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [ideas, setIdeas] = useState<IdeaRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [availableWeeks, setAvailableWeeks] = useState<string[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const [attendanceChampions, setAttendanceChampions] = useState<{name: string; points: number}[]>([]);
 
   useEffect(() => {
     loadData();
@@ -143,6 +146,20 @@ export default function TeamAchievements() {
           order: 'check_in_date.desc',
         });
         setAttendance(data?.map((a) => ({ ...a, player_name: a.players?.name || 'Unknown' })) || []);
+        // Calculate unique weeks
+        const weeks = [...new Set(data?.map(a => a.check_in_date) || [])].sort().reverse();
+        setAvailableWeeks(weeks);
+        // Calculate attendance champions (sum of all points per player)
+        const pointsByPlayer: Record<string, number> = {};
+        data?.forEach(a => {
+          const name = a.players?.name || 'Unknown';
+          const points = a.points + (a.is_early_bird ? 1 : 0);
+          pointsByPlayer[name] = (pointsByPlayer[name] || 0) + points;
+        });
+        const champions = Object.entries(pointsByPlayer)
+          .map(([name, points]) => ({ name, points }))
+          .sort((a, b) => b.points - a.points);
+        setAttendanceChampions(champions);
       } else if (activeTab === 'courses') {
         const { data } = await db.select<CourseRecord[]>('courses', {
           columns: '*,players:player_id(name)',
@@ -156,7 +173,6 @@ export default function TeamAchievements() {
       } else if (activeTab === 'books') {
         const { data } = await db.select<BookRecord[]>('books', {
           columns: '*,players:player_id(name)',
-          filters: { 'verified': 'eq.true' },
         });
         setBooks(data?.map((b) => ({ ...b, player_name: b.players?.name || 'Unknown' })) || []);
       } else if (activeTab === 'presentations') {
@@ -238,28 +254,87 @@ export default function TeamAchievements() {
 
               {/* Attendance Tab */}
               {activeTab === 'attendance' && (
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-cyber-darker border-b border-gray-700">
-                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Team Member</th>
-                      <th className="px-4 py-3 text-left text-gray-400 font-medium">Check-in Date</th>
-                      <th className="px-4 py-3 text-center text-gray-400 font-medium">Early Bird</th>
-                      <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attendance.map(a => (
-                      <tr key={a.id} className="border-b border-gray-700/50">
-                        <td className="px-4 py-3 text-white">{a.player_name}</td>
-                        <td className="px-4 py-3 text-gray-300">{new Date(a.check_in_date).toLocaleDateString()}</td>
-                        <td className="px-4 py-3 text-center">
-                          {a.is_early_bird ? <span className="text-gold">🌅 Yes</span> : <span className="text-gray-500">No</span>}
-                        </td>
-                        <td className="px-4 py-3 text-center text-success font-bold">+{a.points + (a.is_early_bird ? 1 : 0)}</td>
+                <div className="space-y-6">
+                  {/* Attendance Champions Leaderboard */}
+                  <div className="p-4 bg-gold/10 border border-gold/30 rounded-lg">
+                    <h3 className="font-display text-lg font-bold text-gold flex items-center gap-2 mb-4">
+                      <Crown className="w-5 h-5" /> Attendance Champions
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {attendanceChampions.slice(0, 8).map((c, i) => (
+                        <div key={c.name} className={`p-3 rounded-lg ${i === 0 ? 'bg-gold/20 border border-gold' : 'bg-cyber-darker'}`}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{i === 0 ? '👑' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''}</span>
+                            <span className="text-white font-medium">{c.name}</span>
+                          </div>
+                          <p className="text-success font-bold text-lg">+{c.points} pts</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Week Filter */}
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-white font-medium">Attendance Records</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const idx = availableWeeks.indexOf(selectedWeek);
+                          if (idx < availableWeeks.length - 1) setSelectedWeek(availableWeeks[idx + 1]);
+                        }}
+                        disabled={selectedWeek === 'all' || selectedWeek === availableWeeks[availableWeeks.length - 1]}
+                        className="p-2 text-gray-400 hover:text-white disabled:opacity-30"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <select
+                        value={selectedWeek}
+                        onChange={(e) => setSelectedWeek(e.target.value)}
+                        className="px-3 py-2 bg-cyber-darker border border-gray-600 rounded text-white text-sm"
+                      >
+                        <option value="all">All Weeks</option>
+                        {availableWeeks.map(w => (
+                          <option key={w} value={w}>{new Date(w + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => {
+                          const idx = availableWeeks.indexOf(selectedWeek);
+                          if (idx > 0) setSelectedWeek(availableWeeks[idx - 1]);
+                        }}
+                        disabled={selectedWeek === 'all' || selectedWeek === availableWeeks[0]}
+                        className="p-2 text-gray-400 hover:text-white disabled:opacity-30"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-cyber-darker border-b border-gray-700">
+                        <th className="px-4 py-3 text-left text-gray-400 font-medium">Team Member</th>
+                        <th className="px-4 py-3 text-left text-gray-400 font-medium">Check-in Date</th>
+                        <th className="px-4 py-3 text-center text-gray-400 font-medium">Early Bird</th>
+                        <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {attendance
+                        .filter(a => selectedWeek === 'all' || a.check_in_date === selectedWeek)
+                        .map(a => (
+                          <tr key={a.id} className="border-b border-gray-700/50">
+                            <td className="px-4 py-3 text-white">{a.player_name}</td>
+                            <td className="px-4 py-3 text-gray-300">{new Date(a.check_in_date).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-center">
+                              {a.is_early_bird ? <span className="text-gold">🌅 Yes</span> : <span className="text-gray-500">No</span>}
+                            </td>
+                            <td className="px-4 py-3 text-center text-success font-bold">+{a.points + (a.is_early_bird ? 1 : 0)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {/* Courses Tab */}

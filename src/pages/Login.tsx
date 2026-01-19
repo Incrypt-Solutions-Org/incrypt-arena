@@ -149,12 +149,6 @@ export default function Login() {
               Sign up as Player
             </Link>
           </p>
-          <p className="text-gray-500 text-xs">
-            or{' '}
-            <Link to="/admin/signup" className="text-neon-purple hover:underline">
-              Create Admin Account
-            </Link>
-          </p>
         </div>
 
         {/* Help Text */}

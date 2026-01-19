@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { Calendar, Clock, Check, User, AlertCircle } from 'lucide-react';
 import type { LeaderboardEntry } from '../../types';
 import { db } from '../../lib/supabaseApi';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AttendanceFormProps {
   players: LeaderboardEntry[];

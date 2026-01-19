@@ -13,30 +13,36 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useAdvancedScoring } from '../hooks/useAdvancedScoring';
 import { AttendanceForm } from '../components/admin/AttendanceForm';
+import { AttendancePanel } from '../components/admin/AttendancePanel';
 import { PointsForm } from '../components/admin/PointsForm';
 import { ActivityForm } from '../components/admin/ActivityForm';
 import { BookForm } from '../components/admin/BookForm';
 import { CourseForm } from '../components/admin/CourseForm';
-// import { PresentationForm } from '../components/admin/PresentationForm';
+import { CoursesPanel } from '../components/admin/CoursesPanel';
+import { BooksPanel } from '../components/admin/BooksPanel';
+import { PresentationForm } from '../components/admin/PresentationForm';
 import { BooksLibraryManager } from '../components/admin/BooksLibraryManager';
 import { PresentationsManager } from '../components/admin/PresentationsManager';
 import { BlogsManager } from '../components/admin/BlogsManager';
 import { IdeasManager } from '../components/admin/IdeasManager';
 import { UsersManager } from '../components/admin/UsersManager';
-// import { IdeasForm } from '../components/IdeasForm';
 import { StreaksPanel } from '../components/admin/StreaksPanel';
 
 /**
  * Admin navigation tabs
  */
 const ADMIN_TABS = [
-  { id: 'attendance', label: 'Attendance', icon: Calendar },
+  { id: 'attendance', label: 'Log Attendance', icon: Calendar },
+  { id: 'attendance-records', label: 'Attendance Records', icon: Calendar },
   { id: 'activities', label: 'Activities', icon: Trophy },
-  { id: 'courses', label: 'Courses', icon: BookOpen },
-  { id: 'books', label: 'Books', icon: BookOpen },
+  { id: 'courses', label: 'Add Course', icon: BookOpen },
+  { id: 'courses-records', label: 'Courses Records', icon: BookOpen },
+  { id: 'books', label: 'Add Book', icon: BookOpen },
+  { id: 'books-records', label: 'Books Records', icon: BookOpen },
   { id: 'books-library', label: 'Books Library', icon: BookOpen },
   { id: 'blogs', label: 'Blogs', icon: PenTool },
   { id: 'presentations', label: 'Presentations', icon: Presentation },
+  { id: 'add-presentation', label: 'Add Presentation', icon: Presentation },
   { id: 'penalties', label: 'Penalties', icon: AlertTriangle },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'users', label: 'Users', icon: Users },
@@ -131,14 +137,23 @@ export function AdminDashboard() {
         {activeTab === 'attendance' && (
           <AttendanceForm players={entries} />
         )}
+        {activeTab === 'attendance-records' && (
+          <AttendancePanel />
+        )}
         {activeTab === 'activities' && (
           <ActivityForm players={entries} />
         )}
         {activeTab === 'courses' && (
           <CourseForm players={entries} />
         )}
+        {activeTab === 'courses-records' && (
+          <CoursesPanel />
+        )}
         {activeTab === 'books' && (
           <BookForm players={entries} />
+        )}
+        {activeTab === 'books-records' && (
+          <BooksPanel />
         )}
         {activeTab === 'books-library' && (
           <BooksLibraryManager />
@@ -148,6 +163,9 @@ export function AdminDashboard() {
         )}
         {activeTab === 'presentations' && (
           <PresentationsManager />
+        )}
+        {activeTab === 'add-presentation' && (
+          <PresentationForm players={entries} />
         )}
         {activeTab === 'penalties' && (
           <PointsForm 
