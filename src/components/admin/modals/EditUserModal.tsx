@@ -44,16 +44,24 @@ export function EditUserModal({ isOpen, user, onClose, onSuccess }: EditUserModa
     setIsSubmitting(true);
     try {
       if (db.isConfigured()) {
-        await db.update('players', { 
+        const { error } = await db.update('players', { 
           email: email.trim(), 
           far_away: farAway,
           is_admin: isAdmin 
         }, { 'id': `eq.${user.id}` }, { authToken: session?.access_token });
+        
+        if (error) {
+          console.error('Failed to update user:', error.message);
+          alert('Failed to update user: ' + error.message);
+          setIsSubmitting(false);
+          return;
+        }
       }
       onSuccess();
       onClose();
     } catch (err) {
       console.error('Failed to update user:', err);
+      alert('Failed to update user. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

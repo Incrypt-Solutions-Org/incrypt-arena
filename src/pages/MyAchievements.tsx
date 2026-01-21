@@ -4,13 +4,15 @@
  */
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, GraduationCap, PenTool, Trophy, Calendar, Presentation as PresentationIcon, AlertTriangle, Award, Check, Lightbulb } from 'lucide-react';
+import { BookOpen, GraduationCap, PenTool, Trophy, Calendar, Presentation as PresentationIcon, AlertTriangle, Award, Check, Lightbulb, Edit } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabaseApi';
 import { AddCourseModal } from '../components/user/AddCourseModal';
 import { AddBookModal } from '../components/user/AddBookModal';
 import { AddBlogModal } from '../components/user/AddBlogModal';
 import { AddIdeaModal } from '../components/user/AddIdeaModal';
+import { EditCourseModal } from '../components/user/EditCourseModal';
+import { EditBookModal } from '../components/user/EditBookModal';
 import { CheckInCard } from '../components/user/CheckInCard';
 
 const PERFORMANCE_TABS = [
@@ -34,9 +36,14 @@ export default function MyAchievements() {
   const [isAddBookOpen, setIsAddBookOpen] = useState(false);
   const [isAddBlogOpen, setIsAddBlogOpen] = useState(false);
   const [isAddIdeaOpen, setIsAddIdeaOpen] = useState(false);
+  const [isEditCourseOpen, setIsEditCourseOpen] = useState(false);
+  const [isEditBookOpen, setIsEditBookOpen] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState<any>(null);
+  const [selectedBook, setSelectedBook] = useState<any>(null);
 
   const [attendance, setAttendance] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
+  const [presentations, setPresentations] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [blogs, setBlogs] = useState<any[]>([]);
@@ -134,6 +141,40 @@ export default function MyAchievements() {
     }
   }, [playerData?.id]);
 
+  const fetchPresentations = useCallback(async () => {
+    if (!playerData?.id || !db.isConfigured()) return;
+    setIsLoading(true);
+    try {
+      // Fetch presentations where user is first or second presenter
+      const { data: asFirst } = await db.select('presentations', {
+        columns: '*,second_presenter:second_presenter_id(name)',
+        filters: { 'player_id': `eq.${playerData.id}` },
+        order: 'date.desc',
+      });
+      const { data: asSecond } = await db.select('presentations', {
+        columns: '*,players:player_id(name)',
+        filters: { 'second_presenter_id': `eq.${playerData.id}` },
+        order: 'date.desc',
+      });
+      // Combine and dedupe by topic+date to avoid duplicates for pair presentations
+      const allFirst = Array.isArray(asFirst) ? asFirst : [];
+      const allSecond = Array.isArray(asSecond) ? asSecond : [];
+      const all = [...allFirst, ...allSecond];
+      const grouped = new Map<string, any>();
+      all.forEach((p: any) => {
+        const key = `${p.topic}-${p.date}`;
+        if (!grouped.has(key)) {
+          grouped.set(key, p);
+        }
+      });
+      setPresentations(Array.from(grouped.values()));
+    } catch (err) {
+      console.error('Failed to fetch presentations:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [playerData?.id]);
+
   const fetchIdeas = useCallback(async () => {
     if (!playerData?.id || !db.isConfigured()) return;
     setIsLoading(true);
@@ -156,6 +197,8 @@ export default function MyAchievements() {
       fetchAttendance();
     } else if (activeTab === 'activities') {
       fetchActivities();
+    } else if (activeTab === 'presentations') {
+      fetchPresentations();
     } else if (activeTab === 'courses') {
       fetchCourses();
     } else if (activeTab === 'books') {
@@ -165,7 +208,7 @@ export default function MyAchievements() {
     } else if (activeTab === 'ideas') {
       fetchIdeas();
     }
-  }, [activeTab, fetchAttendance, fetchActivities, fetchCourses, fetchBooks, fetchBlogs, fetchIdeas]);
+  }, [activeTab, fetchAttendance, fetchActivities, fetchPresentations, fetchCourses, fetchBooks, fetchBlogs, fetchIdeas]);
 
   if (!user || !playerData) {
     return (
@@ -246,7 +289,7 @@ export default function MyAchievements() {
                       <tbody>
                         {attendance.map((record, idx) => (
                           <motion.tr key={record.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
-                            <td className="px-4 py-3 text-white font-medium">{new Date(record.check_in_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                            <td className="px-4 py-3 text-white font-medium">{new Date(record.check_in_date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
                             <td className="px-4 py-3 text-gray-300">{record.check_in_time?.slice(0, 5) || '—'}</td>
                              <td className="px-4 py-3 text-center"><span className="text-success font-medium">+{record.points}</span></td>
                              <td className="px-4 py-3 text-center">
@@ -306,7 +349,46 @@ export default function MyAchievements() {
                 )}
               </div>
             )}
-            {activeTab === 'presentations' && <div className="text-gray-400">Presentations records coming soon...</div>}
+            {activeTab === 'presentations' && (
+              <div className="cyber-card overflow-hidden">
+                {isLoading ? (
+                  <div className="p-8 text-center"><div className="w-6 h-6 border-2 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto" /></div>
+                ) : presentations.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">No presentations recorded yet.</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="bg-cyber-darker border-b border-gray-700">
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Topic</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Type</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
+                          <th className="px-4 py-3 text-left text-gray-400 font-medium">Date</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Partner</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {presentations.map((pres, idx) => (
+                          <motion.tr key={pres.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }} className="border-b border-gray-700/50 hover:bg-cyber-darker/30 transition-colors">
+                            <td className="px-4 py-3 text-white font-medium">{pres.topic}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${pres.is_solo ? 'bg-neon-blue/20 text-neon-blue' : 'bg-neon-purple/20 text-neon-purple'}`}>
+                                {pres.is_solo ? 'Solo' : 'Pair'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center"><span className="text-success font-medium">+{pres.points}</span></td>
+                            <td className="px-4 py-3 text-gray-300">{new Date(pres.date).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-center text-gray-400">
+                              {pres.is_solo ? '—' : (pres.second_presenter?.name || pres.players?.name || '—')}
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
             {activeTab === 'courses' && (
               <div className="cyber-card overflow-hidden">
                 {isLoading ? (
@@ -323,6 +405,7 @@ export default function MyAchievements() {
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Completion</th>
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Links</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Edit</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -337,6 +420,9 @@ export default function MyAchievements() {
                                  {course.course_url && <a href={ensureProtocol(course.course_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Course Link"><GraduationCap className="w-4 h-4" /></a>}
                                  {course.notes_link && <a href={ensureProtocol(course.notes_link)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Notes Link"><PenTool className="w-4 h-4" /></a>}
                                </div>
+                             </td>
+                             <td className="px-4 py-3 text-center">
+                               <button onClick={() => { setSelectedCourse(course); setIsEditCourseOpen(true); }} className="p-1.5 bg-neon-blue/20 rounded hover:bg-neon-blue/40 text-neon-blue transition-colors" title="Edit Course"><Edit className="w-4 h-4" /></button>
                              </td>
                           </motion.tr>
                         ))}
@@ -362,6 +448,7 @@ export default function MyAchievements() {
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Progress</th>
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Points</th>
                           <th className="px-4 py-3 text-center text-gray-400 font-medium">Notes</th>
+                          <th className="px-4 py-3 text-center text-gray-400 font-medium">Edit</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -379,6 +466,9 @@ export default function MyAchievements() {
                                {book.notes_link ? (
                                  <a href={ensureProtocol(book.notes_link)} target="_blank" rel="noopener noreferrer" className="inline-flex p-1.5 bg-cyber-darker rounded hover:text-white text-gray-400 transition-colors" title="Notes Link"><PenTool className="w-4 h-4" /></a>
                                ) : <span className="text-gray-600">—</span>}
+                             </td>
+                             <td className="px-4 py-3 text-center">
+                               <button onClick={() => { setSelectedBook(book); setIsEditBookOpen(true); }} className="p-1.5 bg-neon-blue/20 rounded hover:bg-neon-blue/40 text-neon-blue transition-colors" title="Edit Book"><Edit className="w-4 h-4" /></button>
                              </td>
                           </motion.tr>
                         ))}
@@ -499,6 +589,8 @@ export default function MyAchievements() {
       <AddBookModal isOpen={isAddBookOpen} onClose={() => setIsAddBookOpen(false)} onSuccess={fetchBooks} userId={playerData.id} />
       <AddBlogModal isOpen={isAddBlogOpen} onClose={() => setIsAddBlogOpen(false)} onSuccess={fetchBlogs} userId={playerData.id} />
       <AddIdeaModal isOpen={isAddIdeaOpen} onClose={() => setIsAddIdeaOpen(false)} onSuccess={fetchIdeas} />
+      <EditCourseModal isOpen={isEditCourseOpen} course={selectedCourse} onClose={() => { setIsEditCourseOpen(false); setSelectedCourse(null); }} onSuccess={fetchCourses} />
+      <EditBookModal isOpen={isEditBookOpen} book={selectedBook} onClose={() => { setIsEditBookOpen(false); setSelectedBook(null); }} onSuccess={fetchBooks} />
     </div>
   );
 }

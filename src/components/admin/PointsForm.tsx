@@ -67,7 +67,7 @@ export function PointsForm({ title, description, players, category, isNegative =
           record.url = '';
         } else if (category === 'presentation') {
           record.topic = note || 'Presentation';
-          record.date = new Date().toISOString().split('T')[0];
+          record.date = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
           record.is_solo = true;
         }
 

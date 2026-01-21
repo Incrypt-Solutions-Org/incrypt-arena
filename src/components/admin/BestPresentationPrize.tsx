@@ -45,7 +45,7 @@ export function BestPresentationPrize({ players, onSuccess }: BestPresentationPr
           player_id: selectedPlayer,
           cycle_id: cycle.id,
           topic: `Best Presentation Award${reason ? `: ${reason}` : ''}`,
-          date: new Date().toISOString().split('T')[0],
+          date: (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })(),
           is_solo: true,
           presentation_order: 0, // 0 indicates it's a prize, not a regular presentation
           points: parseInt(points) || POINTS.BEST_PRESENTATION,

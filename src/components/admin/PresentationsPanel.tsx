@@ -53,7 +53,15 @@ export function PresentationsPanel({ onOpenEditModal }: PresentationsPanelProps)
             player_name: p.players?.name || 'Unknown',
             second_presenter_name: p.second_presenter?.name || null,
           }));
-          setPresentations(formatted);
+          // Group presentations by topic+date to avoid duplicates for pair presentations
+          const grouped = new Map<string, typeof formatted[0]>();
+          formatted.forEach((p) => {
+            const key = `${p.topic}-${p.date}`;
+            if (!grouped.has(key)) {
+              grouped.set(key, p);
+            }
+          });
+          setPresentations(Array.from(grouped.values()));
         }
       } catch (err) {
         console.error('Failed to load presentations:', err);

@@ -7,6 +7,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { db } from '../../../lib/supabaseApi';
 import { useAuth } from '../../../hooks/useAuth';
 
+// Helper to get local date in YYYY-MM-DD format
+function getLocalDateStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface Player { player_id: string; player_name: string; }
 
 interface AddIdeaModalProps {
@@ -22,7 +28,7 @@ export function AddIdeaModal({ isOpen, onClose, onSuccess, players }: AddIdeaMod
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [points, setPoints] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalDateStr());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +47,7 @@ export function AddIdeaModal({ isOpen, onClose, onSuccess, players }: AddIdeaMod
       setTitle('');
       setDescription('');
       setPoints('');
-      setDate(new Date().toISOString().split('T')[0]);
+      setDate(getLocalDateStr());
       onSuccess();
       onClose();
     } catch (err) {

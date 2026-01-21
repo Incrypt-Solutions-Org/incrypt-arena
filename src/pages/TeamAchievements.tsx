@@ -52,6 +52,7 @@ interface BookRecord {
 interface PresentationRecord {
   id: string;
   topic: string;
+  date: string;
   presenters: string;
   slides_url: string | null;
   eval_link: string | null;
@@ -178,11 +179,20 @@ export default function TeamAchievements() {
       } else if (activeTab === 'presentations') {
         const { data } = await db.select<PresentationRecord[]>('presentations', {
           columns: '*,players:player_id(name),second_presenter:second_presenter_id(name)',
+          order: 'date.desc',
         });
-        setPresentations(data?.map((p) => ({
-          ...p,
-          presenters: p.second_presenter ? `${p.players?.name} & ${p.second_presenter.name}` : p.players?.name || 'Unknown'
-        })) || []);
+        // Group presentations by topic+date to avoid duplicates for pair presentations
+        const grouped = new Map<string, PresentationRecord>();
+        data?.forEach((p) => {
+          const key = `${p.topic}-${p.date}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, {
+              ...p,
+              presenters: p.second_presenter ? `${p.players?.name} & ${p.second_presenter.name}` : p.players?.name || 'Unknown'
+            });
+          }
+        });
+        setPresentations(Array.from(grouped.values()));
       } else if (activeTab === 'ideas') {
         const { data } = await db.select<IdeaRecord[]>('ideas', {
           columns: '*,players:player_id(name)',
@@ -325,7 +335,7 @@ export default function TeamAchievements() {
                         .map(a => (
                           <tr key={a.id} className="border-b border-gray-700/50">
                             <td className="px-4 py-3 text-white">{a.player_name}</td>
-                            <td className="px-4 py-3 text-gray-300">{new Date(a.check_in_date).toLocaleDateString()}</td>
+                            <td className="px-4 py-3 text-gray-300">{new Date(a.check_in_date + 'T00:00:00').toLocaleDateString()}</td>
                             <td className="px-4 py-3 text-center">
                               {a.is_early_bird ? <span className="text-gold">🌅 Yes</span> : <span className="text-gray-500">No</span>}
                             </td>

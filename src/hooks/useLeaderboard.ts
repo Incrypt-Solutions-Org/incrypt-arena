@@ -169,6 +169,7 @@ export function useLeaderboard(): UseLeaderboardReturn {
       return;
     }
 
+    // Fetch leaderboard data
     const { data, error: fetchError } = await db.select<LeaderboardEntry[]>('leaderboard', {
       order: 'total_points.desc',
     });
@@ -176,14 +177,40 @@ export function useLeaderboard(): UseLeaderboardReturn {
     if (fetchError) {
       setError(fetchError.message);
       setEntries(MOCK_LEADERBOARD);
-    } else {
-      const processedEntries = (data || []).map((entry, index, arr) => ({
-        ...entry,
-        rank: index + 1,
-        is_last_place: index === arr.length - 1 && arr.length > 1,
-      }));
-      setEntries(processedEntries);
+      setIsLoading(false);
+      return;
     }
+
+    // Fetch player far_away statuses to apply 2x multiplier
+    const { data: playersData } = await db.select<{ id: string; far_away: boolean }[]>('players', {
+      columns: 'id,far_away',
+    });
+
+    const farAwayMap = new Map<string, boolean>();
+    playersData?.forEach(p => farAwayMap.set(p.id, p.far_away));
+
+    // Apply 2x multiplier for far_away players' attendance points
+    const adjustedEntries = (data || []).map((entry) => {
+      const isFarAway = farAwayMap.get(entry.player_id) || false;
+      if (isFarAway) {
+        // Double attendance points for far_away players
+        return {
+          ...entry,
+          attendance_points: entry.attendance_points * 2,
+          total_points: entry.total_points + entry.attendance_points, // Add the extra attendance
+        };
+      }
+      return entry;
+    });
+
+    // Re-sort by total_points after adjustment and assign ranks
+    const sortedEntries = adjustedEntries.sort((a, b) => b.total_points - a.total_points);
+    const processedEntries = sortedEntries.map((entry, index, arr) => ({
+      ...entry,
+      rank: index + 1,
+      is_last_place: index === arr.length - 1 && arr.length > 1,
+    }));
+    setEntries(processedEntries);
 
     setIsLoading(false);
   }, []);
